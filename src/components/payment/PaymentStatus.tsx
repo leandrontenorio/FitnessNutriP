@@ -57,29 +57,30 @@ function PaymentStatus() {
         // Process the payment and update the database
         await processPayment(externalReference, paymentId, status);
 
-        if (status === 'approved') {
-          // Poll for plan generation completion
-          const pollInterval = setInterval(async () => {
-            const hasPlan = await checkPlanStatus();
-            
-            if (hasPlan) {
-              clearInterval(pollInterval);
-              toast.success('Plano gerado com sucesso! Redirecionando...');
-              navigate('/plan', { replace: true });
-            } else {
-              setRetryCount(prev => {
-                if (prev >= maxRetries) {
-                  clearInterval(pollInterval);
-                  throw new Error('Timeout waiting for plan generation');
-                }
-                return prev + 1;
-              });
-            }
-          }, retryDelay);
+    if (status === 'approved') {
+  // Poll for plan generation completion
+  const pollInterval = setInterval(async () => {
+    const hasPlan = await checkPlanStatus();
 
-          // Cleanup interval on component unmount
-          return () => clearInterval(pollInterval);
+    if (hasPlan) {
+      clearInterval(pollInterval);
+      toast.success('Plano gerado com sucesso! Redirecionando...');
+      // Redireciona para a URL externa
+      window.location.href = 'https://wondrous-yeot-7f10c4.netlify.app/plan';
+    } else {
+      setRetryCount(prev => {
+        if (prev >= maxRetries) {
+          clearInterval(pollInterval);
+          throw new Error('Timeout waiting for plan generation');
         }
+        return prev + 1;
+      });
+    }
+  }, retryDelay);
+
+  // Cleanup interval on component unmount
+  return () => clearInterval(pollInterval);
+}
       } catch (error) {
         console.error('Error processing payment status:', error);
         setError('Erro ao processar status do pagamento. Por favor, entre em contato com o suporte.');
