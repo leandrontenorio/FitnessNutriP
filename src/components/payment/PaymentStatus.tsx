@@ -79,12 +79,13 @@ function PaymentStatus() {
 
           // Cleanup interval on component unmount
           return () => clearInterval(pollInterval);
+        } else {
+          setLoading(false);
         }
       } catch (error) {
         console.error('Error processing payment status:', error);
         setError('Erro ao processar status do pagamento. Por favor, entre em contato com o suporte.');
         toast.error('Erro ao processar pagamento');
-      } finally {
         setLoading(false);
       }
     };
