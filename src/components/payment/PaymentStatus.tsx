@@ -98,18 +98,29 @@ function PaymentStatus() {
     const status = params.get('collection_status') || params.get('status');
     
     if (status === 'approved') {
-      return {
-        icon: <CheckCircle className="h-16 w-16 text-green-500" />,
-        title: 'Pagamento Aprovado!',
-        message: retryCount > 0 
-          ? 'Gerando seu plano personalizado... Por favor, aguarde.'
-          : 'Seu plano está sendo gerado. Você será redirecionado em alguns instantes...',
-        buttonText: 'Ir para Meu Plano',
-        buttonAction: () => {
-          window.location.href = 'https://wondrous-yeot-7f10c4.netlify.app/plan';
-        },
-        buttonColor: 'bg-green-500 hover:bg-green-600'
-      };
+  // Poll for plan generation completion
+  const pollInterval = setInterval(async () => {
+    const hasPlan = await checkPlanStatus();
+
+    if (hasPlan) {
+      clearInterval(pollInterval);
+      toast.success('Plano gerado com sucesso! Redirecionando...');
+      // Redireciona para a URL externa
+      window.location.href = 'https://wondrous-yeot-7f10c4.netlify.app/plan';
+    } else {
+      setRetryCount(prev => {
+        if (prev >= maxRetries) {
+          clearInterval(pollInterval);
+          throw new Error('Timeout waiting for plan generation');
+        }
+        return prev + 1;
+      });
+    }
+  }, retryDelay);
+
+  // Cleanup interval on component unmount
+  return () => clearInterval(pollInterval);
+}
     } else if (status === 'pending') {
       return {
         icon: <Clock className="h-16 w-16 text-yellow-500" />,
