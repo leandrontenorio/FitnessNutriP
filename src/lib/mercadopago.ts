@@ -43,8 +43,8 @@ export const createPaymentPreference = async (userId: string): Promise<PaymentPr
         },
         back_urls: {
           success: https://wondrous-yeot-7f10c4.netlify.app/plan,
-            failure: https://wondrous-yeot-7f10c4.netlify.app/payment/failure',
-            pending: https://wondrous-yeot-7f10c4.netlify.app/payment/pending,
+          failure: https://wondrous-yeot-7f10c4.netlify.app/payment/failure',
+          pending: https://wondrous-yeot-7f10c4.netlify.app/payment/pending,
         },
         auto_return: 'approved',
         external_reference: userId,
