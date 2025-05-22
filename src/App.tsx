@@ -18,6 +18,7 @@ function App() {
   const [showReset, setShowReset] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hasPaidPlan, setHasPaidPlan] = useState(false);
+  const [hasGeneratedPlan, setHasGeneratedPlan] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ function App() {
         setIsLoggedIn(!!session);
         
         if (session) {
-          checkPlanStatus(session.user.id);
+          await checkUserStatus(session.user.id);
         }
       } catch (error) {
         console.error('Initialization error:', error);
@@ -52,38 +53,49 @@ function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(!!session);
       if (session) {
-        checkPlanStatus(session.user.id);
+        await checkUserStatus(session.user.id);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const checkPlanStatus = async (userId: string) => {
+  const checkUserStatus = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // Check if user has paid plan
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('has_paid_plan')
         .eq('id', userId)
-        .maybeSingle();
+        .single();
 
-      if (error && error.code === 'PGRST116') {
-        setHasPaidPlan(false);
+      if (profileError) {
+        console.error('Error checking profile:', profileError);
         return;
       }
 
-      if (error) {
-        console.error('Error checking plan status:', error);
+      setHasPaidPlan(profile?.has_paid_plan || false);
+
+      // Check if nutritional plan exists
+      const { data: plans, error: plansError } = await supabase
+        .from('nutritional_plans')
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1);
+
+      if (plansError) {
+        console.error('Error checking plans:', plansError);
         return;
       }
-      
-      setHasPaidPlan(data?.has_paid_plan || false);
+
+      setHasGeneratedPlan(plans && plans.length > 0);
     } catch (error) {
-      console.error('Error checking plan status:', error);
+      console.error('Error checking user status:', error);
       setHasPaidPlan(false);
+      setHasGeneratedPlan(false);
     }
   };
 
@@ -160,10 +172,14 @@ function App() {
         <Route
           path="/plan"
           element={
-            isLoggedIn && hasPaidPlan ? (
-              <PersonalizedPlan />
+            isLoggedIn ? (
+              hasPaidPlan ? (
+                <PersonalizedPlan isGenerating={!hasGeneratedPlan} />
+              ) : (
+                <Navigate to="/plans" />
+              )
             ) : (
-              <Navigate to="/plans" />
+              <Navigate to="/" />
             )
           }
         />
@@ -172,7 +188,7 @@ function App() {
           element={<UpdatePassword />}
         />
         <Route
-          path="/plan"
+          path="/payment/success"
           element={isLoggedIn ? <PaymentStatus /> : <Navigate to="/" />}
         />
         <Route
