@@ -12,7 +12,7 @@ function PaymentStatus() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 10; // Maximum number of retries
-  const retryDelay = 3000; // 3 seconds between retries
+  const retryDelay = 5000; // 5 seconds between retries
 
   useEffect(() => {
     const checkPlanStatus = async () => {
