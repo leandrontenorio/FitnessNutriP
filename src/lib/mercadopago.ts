@@ -42,7 +42,7 @@ export const createPaymentPreference = async (userId: string): Promise<PaymentPr
           email: session.user.email
         },
         back_urls: {
-          success: `${window.location.origin}/payment/success`,
+          success: `${window.location.origin}/plan`,
           failure: `${window.location.origin}/payment/failure`,
           pending: `${window.location.origin}/payment/pending`
         },
