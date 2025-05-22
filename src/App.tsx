@@ -172,7 +172,7 @@ function App() {
           element={<UpdatePassword />}
         />
         <Route
-          path="/payment/success"
+          path="/plan"
           element={isLoggedIn ? <PaymentStatus /> : <Navigate to="/" />}
         />
         <Route
