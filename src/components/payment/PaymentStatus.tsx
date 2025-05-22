@@ -173,3 +173,5 @@ function PaymentStatus() {
 }
 
 export default PaymentStatus;
+
+export default PaymentStatus
