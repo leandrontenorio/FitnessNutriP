@@ -153,13 +153,13 @@ function Plans() {
             email: user.email
           },
           back_urls: {
-            success: 'https://wondrous-yeot-7f10c4.netlify.app/plan',
-            failure: 'https://wondrous-yeot-7f10c4.netlify.app/payment/failure',
-            pending: 'https://wondrous-yeot-7f10c4.netlify.app/payment/pending'
+            success: `${window.location.origin}/payment/success`,
+            failure: `${window.location.origin}/payment/failure`,
+            pending: `${window.location.origin}/payment/pending`
           },
           auto_return: 'approved',
           external_reference: user.id,
-          notification_url: 'https://wondrous-yeot-7f10c4.netlify.app/api/webhook/mercadopago',
+          notification_url: `${window.location.origin}/api/webhook/mercadopago`,
           statement_descriptor: 'FITNESSNUTRI',
           payment_methods: {
             excluded_payment_methods: [],
