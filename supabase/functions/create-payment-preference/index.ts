@@ -41,7 +41,7 @@ serve(async (req) => {
           email: email
         },
         back_urls: {
-          success: `${origin}/payment/success`,
+          success: `${origin}/plan`,
           failure: `${origin}/payment/failure`,
           pending: `${origin}/payment/pending`
         },
