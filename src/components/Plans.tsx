@@ -153,13 +153,13 @@ function Plans() {
             email: user.email
           },
           back_urls: {
-            success: `${window.location.origin}/payment/success`,
-            failure: `${window.location.origin}/payment/failure`,
-            pending: `${window.location.origin}/payment/pending`
+            success: `${import.meta.env.VITE_SUPABASE_URL}/payment/success`,
+            failure: `${import.meta.env.VITE_SUPABASE_URL}/payment/failure`,
+            pending: `${import.meta.env.VITE_SUPABASE_URL}/payment/pending`
           },
           auto_return: 'approved',
           external_reference: user.id,
-          notification_url: `${window.location.origin}/api/webhook/mercadopago`,
+          notification_url: `${import.meta.env.VITE_SUPABASE_URL}/api/webhook/mercadopago`,
           statement_descriptor: 'FITNESSNUTRI',
           payment_methods: {
             excluded_payment_methods: [],
