@@ -65,7 +65,7 @@ function PaymentStatus() {
             if (hasPlan) {
               clearInterval(pollInterval);
               toast.success('Plano gerado com sucesso! Redirecionando...');
-              navigate('/plan', { replace: true });
+              navigate('https://wondrous-yeot-7f10c4.netlify.app/plan', { replace: true });
             } else {
               setRetryCount(prev => {
                 if (prev >= maxRetries) {
