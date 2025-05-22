@@ -153,13 +153,13 @@ function Plans() {
             email: user.email
           },
           back_urls: {
-            success: 'https://stellular-bunny-1878ee.netlify.app/payment/success',
-            failure: 'https://stellular-bunny-1878ee.netlify.app/payment/failure',
-            pending: 'https://stellular-bunny-1878ee.netlify.app/payment/pending'
+            success: 'https://wondrous-yeot-7f10c4.netlify.app/payment/success',
+            failure: 'https://wondrous-yeot-7f10c4.netlify.app/payment/failure',
+            pending: 'https://wondrous-yeot-7f10c4.netlify.app/payment/pending'
           },
           auto_return: 'approved',
           external_reference: user.id,
-          notification_url: 'https://stellular-bunny-1878ee.netlify.app/api/webhook/mercadopago',
+          notification_url: 'https://wondrous-yeot-7f10c4.netlify.app/api/webhook/mercadopago',
           statement_descriptor: 'FITNESSNUTRI',
           payment_methods: {
             excluded_payment_methods: [],
