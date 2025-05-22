@@ -12,7 +12,7 @@ function PaymentStatus() {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 10; // Maximum number of retries
-  const retryDelay = 5000; // 5 seconds between retries
+  const retryDelay = 3000; // 3 seconds between retries
 
   useEffect(() => {
     const checkPlanStatus = async () => {
@@ -79,13 +79,12 @@ function PaymentStatus() {
 
           // Cleanup interval on component unmount
           return () => clearInterval(pollInterval);
-        } else {
-          setLoading(false);
         }
       } catch (error) {
         console.error('Error processing payment status:', error);
         setError('Erro ao processar status do pagamento. Por favor, entre em contato com o suporte.');
         toast.error('Erro ao processar pagamento');
+      } finally {
         setLoading(false);
       }
     };
