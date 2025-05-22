@@ -65,8 +65,7 @@ function PaymentStatus() {
             if (hasPlan) {
               clearInterval(pollInterval);
               toast.success('Plano gerado com sucesso! Redirecionando...');
-              // Redirect to the Netlify URL
-              window.location.href = 'https://wondrous-yeot-7f10c4.netlify.app/plan';
+              navigate('/plan', { replace: true });
             } else {
               setRetryCount(prev => {
                 if (prev >= maxRetries) {
@@ -105,9 +104,7 @@ function PaymentStatus() {
           ? 'Gerando seu plano personalizado... Por favor, aguarde.'
           : 'Seu plano está sendo gerado. Você será redirecionado em alguns instantes...',
         buttonText: 'Ir para Meu Plano',
-        buttonAction: () => {
-          window.location.href = 'https://wondrous-yeot-7f10c4.netlify.app/plan';
-        },
+        buttonAction: () => navigate('/plan', { replace: true }),
         buttonColor: 'bg-green-500 hover:bg-green-600'
       };
     } else if (status === 'pending') {
