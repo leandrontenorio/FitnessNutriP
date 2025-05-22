@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
-import { Leaf, Download, Menu as MenuIcon, Activity, ShoppingBag, Apple } from 'lucide-react';
+import { Leaf, Download, Menu as MenuIcon, Activity, ShoppingBag, Apple, Loader } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import toast from 'react-hot-toast';
 import Menu from './Menu';
@@ -20,7 +20,11 @@ interface UserRegistration {
   training_preference?: string;
 }
 
-function PersonalizedPlan() {
+interface PersonalizedPlanProps {
+  isGenerating?: boolean;
+}
+
+function PersonalizedPlan({ isGenerating = false }: PersonalizedPlanProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,6 +32,7 @@ function PersonalizedPlan() {
   const [activeTab, setActiveTab] = useState('nutrition');
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [isPrintMode, setIsPrintMode] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,6 +78,46 @@ function PersonalizedPlan() {
     loadUserData();
   }, []);
 
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (isGenerating) {
+      interval = setInterval(async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data: plan } = await supabase
+            .from('nutritional_plans')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .single();
+
+          if (plan) {
+            window.location.reload();
+          } else {
+            setRetryCount(prev => {
+              if (prev >= 10) { // Max 10 retries (50 seconds)
+                clearInterval(interval);
+                return prev;
+              }
+              return prev + 1;
+            });
+          }
+        } catch (error) {
+          console.error('Error checking plan status:', error);
+        }
+      }, 5000); // Check every 5 seconds
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [isGenerating]);
+
   const handleDownloadPDF = async (currentSectionOnly: boolean = false) => {
     if (!contentRef.current) return;
 
@@ -103,14 +148,12 @@ function PersonalizedPlan() {
           letterRendering: true,
           windowWidth: 1200,
           onclone: function(clonedDoc: Document) {
-            // Remover elementos de navegação
             const nav = clonedDoc.querySelector('.navigation-controls');
             if (nav) nav.remove();
 
             const pdfButtons = clonedDoc.querySelector('.pdf-buttons');
             if (pdfButtons) pdfButtons.remove();
 
-            // Se for o PDF completo, mostrar todas as seções
             if (!currentSectionOnly) {
               const sections = clonedDoc.querySelectorAll('.section-content');
               sections.forEach((section, index) => {
@@ -121,7 +164,6 @@ function PersonalizedPlan() {
               });
             }
 
-            // Adicionar quebras de página para dias de treino
             const workoutDays = clonedDoc.querySelectorAll('.workout-day');
             workoutDays.forEach((day, index) => {
               if (index > 0) {
@@ -130,7 +172,6 @@ function PersonalizedPlan() {
               day.classList.add('keep-together');
             });
 
-            // Adicionar quebras de página para refeições
             const mealCards = clonedDoc.querySelectorAll('.meal-card');
             mealCards.forEach((meal, index) => {
               if (index > 0) {
@@ -139,13 +180,11 @@ function PersonalizedPlan() {
               meal.classList.add('keep-together');
             });
 
-            // Garantir que elementos importantes fiquem juntos
             const keepTogether = clonedDoc.querySelectorAll('.metrics-grid, .info-card, table, .exercise-section, .warmup-section, .cooldown-section, .tips-section');
             keepTogether.forEach(element => {
               element.classList.add('keep-together');
             });
 
-            // Adicionar espaçamento entre seções
             const sections = clonedDoc.querySelectorAll('.section-content');
             sections.forEach((section, index) => {
               if (index > 0) {
@@ -153,7 +192,6 @@ function PersonalizedPlan() {
               }
             });
 
-            // Ajustar cabeçalhos de seção
             const sectionHeaders = clonedDoc.querySelectorAll('.section-header');
             sectionHeaders.forEach(header => {
               header.classList.add('keep-together');
@@ -186,6 +224,30 @@ function PersonalizedPlan() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-white to-purple-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a1b9a]"></div>
+      </div>
+    );
+  }
+
+  if (isGenerating) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-white to-purple-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="flex justify-center mb-6">
+            <Loader className="h-12 w-12 text-[#6a1b9a] animate-spin" />
+          </div>
+          <h2 className="text-2xl font-bold text-[#6a1b9a] mb-4">
+            Gerando seu Plano Personalizado
+          </h2>
+          <p className="text-gray-600 mb-4">
+            Estamos criando seu plano nutricional personalizado. 
+            Isso pode levar alguns minutos.
+          </p>
+          {retryCount > 0 && (
+            <p className="text-sm text-gray-500">
+              Tempo estimado: {Math.max(0, 50 - (retryCount * 5))} segundos
+            </p>
+          )}
+        </div>
       </div>
     );
   }
