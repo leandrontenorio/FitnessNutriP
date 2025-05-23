@@ -160,14 +160,10 @@ function App() {
         <Route
           path="/plan"
           element={
-            isLoggedIn ? (
-              hasPaidPlan ? (
-                <PersonalizedPlan />
-              ) : (
-                <Navigate to="/plans" />
-              )
+            isLoggedIn && hasPaidPlan ? (
+              <PersonalizedPlan />
             ) : (
-              <Navigate to="/" />
+              <Navigate to="/plans" />
             )
           }
         />
