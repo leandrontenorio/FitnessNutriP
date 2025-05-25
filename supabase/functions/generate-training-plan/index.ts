@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
-import { Configuration, OpenAIApi } from "npm:openai@4.28.0";
+import { GoogleGenerativeAI } from "npm:@google/generative-ai@0.2.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,6 +8,7 @@ const corsHeaders = {
 };
 
 interface UserData {
+  userId: string;
   weight: number;
   height: number;
   age: number;
@@ -25,21 +26,21 @@ serve(async (req) => {
       return new Response('ok', { headers: corsHeaders });
     }
 
-    // Get OpenAI API key from environment
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openaiApiKey) {
-      throw new Error('Missing OpenAI API key');
+    // Get Gemini API key from environment
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('Missing Gemini API key');
     }
 
-    // Initialize OpenAI
-    const configuration = new Configuration({ apiKey: openaiApiKey });
-    const openai = new OpenAIApi(configuration);
+    // Initialize Gemini
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
     // Get user data from request
     const userData: UserData = await req.json();
 
-    // Generate system prompt
-    const systemPrompt = `You are an expert personal trainer and exercise physiologist. Create a detailed workout plan based on the following parameters:
+    // Generate prompt
+    const prompt = `As an expert personal trainer and exercise physiologist, create a detailed workout plan based on these parameters:
 
 Weight: ${userData.weight}kg
 Height: ${userData.height}cm
@@ -51,7 +52,7 @@ Training Preference: ${userData.training_preference}
 Frequency: ${userData.frequency_per_week} days per week
 ${userData.restrictions ? `Restrictions: ${userData.restrictions.join(', ')}` : ''}
 
-The response should be a JSON object with the following structure:
+Return ONLY a JSON object with this exact structure (no other text):
 {
   "workoutDays": [
     {
@@ -71,19 +72,10 @@ The response should be a JSON object with the following structure:
   ]
 }`;
 
-    // Call OpenAI API
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: "Generate a workout plan following the specified format." }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: "json_object" }
-    });
-
-    const workoutPlan = JSON.parse(completion.choices[0].message.content);
+    // Call Gemini API
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const workoutPlan = JSON.parse(response.text());
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -136,7 +128,11 @@ The response should be a JSON object with the following structure:
   } catch (error) {
     console.error('Error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message,
+        fallback: true 
+      }),
       {
         status: 500,
         headers: {
