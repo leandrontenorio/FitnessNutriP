@@ -64,6 +64,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
         .single();
 
       if (existingPlan) {
+        // Transform stored plan data into workoutDays format
         const transformedDays = existingPlan.workout_days.map((day: any) => ({
           day: day.day_name,
           exercises: day.exercises,
@@ -72,58 +73,19 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
         }));
         setWorkoutDays(transformedDays);
       } else {
-        // Generate new AI plan
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-training-plan`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            weight: userRegistration.weight,
-            height: userRegistration.height,
-            age: userRegistration.age,
-            gender: userRegistration.gender,
-            goal: userRegistration.goal,
-            activity_level: userRegistration.activity_level,
-            training_preference: userRegistration.training_preference,
-            frequency_per_week: calculateFrequency(userRegistration.activity_level)
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to generate training plan');
-        }
-
-        const { data: plan } = await response.json();
-        setWorkoutDays(plan.workoutDays);
+        // Generate new plan based on user preferences
+        const newPlan = generateWorkoutPlan();
+        await saveTrainingPlan(newPlan);
+        setWorkoutDays(newPlan);
       }
     } catch (error) {
       console.error('Error loading training plan:', error);
       toast.error('Erro ao carregar plano de treino');
-      // Generate fallback plan
-      const fallbackPlan = generateWorkoutPlan();
-      setWorkoutDays(fallbackPlan);
+      // Generate temporary plan without saving
+      const tempPlan = generateWorkoutPlan();
+      setWorkoutDays(tempPlan);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const calculateFrequency = (activityLevel: string | undefined): number => {
-    switch (activityLevel) {
-      case 'Sedentário (pouca ou nenhuma atividade física)':
-        return 2;
-      case 'Levemente ativo (exercícios 1 a 3 vezes por semana)':
-        return 3;
-      case 'Moderadamente ativo (exercícios de 3 a 5 vezes por semana)':
-        return 4;
-      case 'Altamente ativo (exercícios de 5 a 7 dias por semana)':
-        return 5;
-      case 'Extremamente ativo (exercícios todos os dias e faz trabalho braçal)':
-        return 6;
-      default:
-        return 3;
     }
   };
 
@@ -205,8 +167,10 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
               { name: 'Rosca Martelo', sets: '3', reps: '12', rest: '45s' }
             );
             break;
+          // Add more cases for other workout types
         }
       } else {
+        // Bodyweight exercises for home workouts
         switch (workoutType) {
           case 'Parte Superior':
             exercises.push(
@@ -224,6 +188,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
               { name: 'Ponte', sets: '3', reps: '15-20', rest: '45s' }
             );
             break;
+          // Add more cases for other workout types
         }
       }
 
@@ -236,6 +201,45 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     }
 
     return workoutDays;
+  };
+
+  const saveTrainingPlan = async (plan: WorkoutDay[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Create training plan
+      const { data: trainingPlan, error: planError } = await supabase
+        .from('training_plans')
+        .insert([{
+          user_id: user.id,
+          activity_level: userRegistration.activity_level,
+          training_preference: userRegistration.training_preference,
+          frequency_per_week: plan.length
+        }])
+        .select()
+        .single();
+
+      if (planError) throw planError;
+
+      // Create workout days
+      const workoutDaysData = plan.map(day => ({
+        plan_id: trainingPlan.id,
+        day_name: day.day,
+        exercises: day.exercises,
+        warmup: day.warmup,
+        cooldown: day.cooldown
+      }));
+
+      const { error: daysError } = await supabase
+        .from('workout_days')
+        .insert(workoutDaysData);
+
+      if (daysError) throw daysError;
+    } catch (error) {
+      console.error('Error saving training plan:', error);
+      throw error;
+    }
   };
 
   if (loading) {

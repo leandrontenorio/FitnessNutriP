@@ -10,7 +10,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.2.0",
     "@mercadopago/sdk-react": "^0.0.17",
     "@supabase/supabase-js": "^2.39.7",
     "html2pdf.js": "^0.10.1",
