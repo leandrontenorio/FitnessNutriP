@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dumbbell, Clock, Activity, Calendar } from 'lucide-react';
+import { Dumbbell, Clock, Activity, Calendar, User, Target, Scale, Ruler } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -167,7 +167,6 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
               { name: 'Rosca Martelo', sets: '3', reps: '12', rest: '45s' }
             );
             break;
-          // Add more cases for other workout types
         }
       } else {
         // Bodyweight exercises for home workouts
@@ -188,7 +187,6 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
               { name: 'Ponte', sets: '3', reps: '15-20', rest: '45s' }
             );
             break;
-          // Add more cases for other workout types
         }
       }
 
@@ -242,6 +240,65 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     }
   };
 
+  const renderUserInfo = () => {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <h2 className="text-2xl font-bold text-center text-[#6a1b9a] mb-6">
+          Informações Base do Plano
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Scale className="h-5 w-5 text-[#6a1b9a] mr-2" />
+              <h3 className="font-semibold text-[#6a1b9a]">Peso</h3>
+            </div>
+            <p className="text-gray-700">{userRegistration.weight} kg</p>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Ruler className="h-5 w-5 text-[#6a1b9a] mr-2" />
+              <h3 className="font-semibold text-[#6a1b9a]">Altura</h3>
+            </div>
+            <p className="text-gray-700">{userRegistration.height} cm</p>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="flex items-center mb-2">
+              <User className="h-5 w-5 text-[#6a1b9a] mr-2" />
+              <h3 className="font-semibold text-[#6a1b9a]">Idade</h3>
+            </div>
+            <p className="text-gray-700">{userRegistration.age} anos</p>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="flex items-center mb-2">
+              <Target className="h-5 w-5 text-[#6a1b9a] mr-2" />
+              <h3 className="font-semibold text-[#6a1b9a]">Objetivo</h3>
+            </div>
+            <p className="text-gray-700">{userRegistration.goal}</p>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-lg md:col-span-2">
+            <div className="flex items-center mb-2">
+              <Activity className="h-5 w-5 text-[#6a1b9a] mr-2" />
+              <h3 className="font-semibold text-[#6a1b9a]">Nível de Atividade</h3>
+            </div>
+            <p className="text-gray-700">{userRegistration.activity_level || 'Não especificado'}</p>
+          </div>
+
+          <div className="bg-purple-50 p-4 rounded-lg md:col-span-2">
+            <div className="flex items-center mb-2">
+              <Dumbbell className="h-5 w-5 text-[#6a1b9a] mr-2" />
+              <h3 className="font-semibold text-[#6a1b9a]">Preferência de Treino</h3>
+            </div>
+            <p className="text-gray-700">{userRegistration.training_preference || 'Não especificado'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -252,6 +309,8 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
 
   return (
     <div className="space-y-8">
+      {renderUserInfo()}
+
       <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
         <div className="flex items-center justify-center mb-6">
           <div className="bg-[#f3e5f5] p-3 rounded-full">
