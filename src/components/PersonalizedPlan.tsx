@@ -308,6 +308,7 @@ function PersonalizedPlan() {
         onClose={() => setIsMenuOpen(false)}
         userEmail={userEmail}
       />
+      <Toaster position="top-right" />
     </>
   );
 }
