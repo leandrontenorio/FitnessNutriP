@@ -83,7 +83,7 @@ function MeasurementsForm() {
         calories: 'Meta calórica',
         gender: 'Gênero'
       };
-      return ${fieldNames[name]} é obrigatório;
+      return `${fieldNames[name]} é obrigatório`;
     }
 
     switch (name) {
@@ -196,7 +196,7 @@ function MeasurementsForm() {
                 placeholder="Ex: 70"
                 value={formData.weight}
                 onChange={(e) => handleInputChange('weight', e.target.value)}
-                className={input-primary ${errors.weight ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}}
+                className={`input-primary ${errors.weight ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
               {formData.weight && (
                 <button
@@ -226,7 +226,7 @@ function MeasurementsForm() {
                 placeholder="Ex: 170"
                 value={formData.height}
                 onChange={(e) => handleInputChange('height', e.target.value)}
-                className={input-primary ${errors.height ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}}
+                className={`input-primary ${errors.height ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
               {formData.height && (
                 <button
@@ -256,7 +256,7 @@ function MeasurementsForm() {
                 placeholder="Ex: 25"
                 value={formData.age}
                 onChange={(e) => handleInputChange('age', e.target.value)}
-                className={input-primary ${errors.age ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}}
+                className={`input-primary ${errors.age ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
               />
               {formData.age && (
                 <button
@@ -283,7 +283,7 @@ function MeasurementsForm() {
             <select
               value={formData.goal}
               onChange={(e) => handleInputChange('goal', e.target.value)}
-              className={input-primary ${errors.goal ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}}
+              className={`input-primary ${errors.goal ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
             >
               <option value="">Selecione seu objetivo</option>
               <option value="emagrecer">Emagrecer</option>
@@ -305,7 +305,7 @@ function MeasurementsForm() {
             <select
               value={formData.calories}
               onChange={(e) => handleInputChange('calories', e.target.value)}
-              className={input-primary ${errors.calories ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}}
+              className={`input-primary ${errors.calories ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
             >
               <option value="">Calorias desejadas para a dieta 🔥</option>
               <option value="nao_sei">Não sei dizer</option>
@@ -328,22 +328,22 @@ function MeasurementsForm() {
               <button
                 type="button"
                 onClick={() => handleInputChange('gender', 'male')}
-                className={relative px-6 py-3 rounded-lg transition-all duration-300 ${
+                className={`relative px-6 py-3 rounded-lg transition-all duration-300 ${
                   formData.gender === 'male'
                     ? 'bg-emerald-600 text-white shadow-lg scale-[1.02]'
                     : 'bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50'
-                } ${errors.gender ? 'border-red-500' : ''}}
+                } ${errors.gender ? 'border-red-500' : ''}`}
               >
                 <span className="font-medium">Masculino</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleInputChange('gender', 'female')}
-                className={relative px-6 py-3 rounded-lg transition-all duration-300 ${
+                className={`relative px-6 py-3 rounded-lg transition-all duration-300 ${
                   formData.gender === 'female'
                     ? 'bg-emerald-600 text-white shadow-lg scale-[1.02]'
                     : 'bg-white border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50'
-                } ${errors.gender ? 'border-red-500' : ''}}
+                } ${errors.gender ? 'border-red-500' : ''}`}
               >
                 <span className="font-medium">Feminino</span>
               </button>
