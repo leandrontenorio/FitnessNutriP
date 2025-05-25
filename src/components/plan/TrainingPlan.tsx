@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Flame, Clock, Dumbbell, Target, Calendar, Activity } from 'lucide-react';
-import MetricsCard from './MetricsCard';
+import React from 'react';
+import { Dumbbell, Clock } from 'lucide-react';
 
 interface UserRegistration {
   weight: number;
@@ -18,80 +17,150 @@ interface TrainingPlanProps {
   isPrintMode?: boolean;
 }
 
-interface Exercise {
-  name: string;
-  sets: string;
-  reps: string;
-  rest: string;
-  notes: string[];
+function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanProps) {
+  const workoutDays = [
+    {
+      day: 'Dia 1 - Treino A',
+      exercises: [
+        { name: 'Agachamento', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Supino Reto', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Remada Curvada', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Elevação Lateral', sets: '3', reps: '15', rest: '45s' },
+        { name: 'Extensão de Tríceps na Polia', sets: '3', reps: '15', rest: '45s' }
+      ]
+    },
+    {
+      day: 'Dia 2 - Treino B',
+      exercises: [
+        { name: 'Leg Press', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Puxada na Frente', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Desenvolvimento com Halter', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Rosca Direta', sets: '3', reps: '15', rest: '45s' },
+        { name: 'Extensão de Quadríceps', sets: '3', reps: '15', rest: '45s' }
+      ]
+    },
+    {
+      day: 'Dia 3 - Treino C',
+      exercises: [
+        { name: 'Stiff', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Supino Inclinado', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Remada Alta', sets: '4', reps: '12', rest: '60s' },
+        { name: 'Extensão de Tríceps Corda', sets: '3', reps: '15', rest: '45s' },
+        { name: 'Panturrilha em Pé', sets: '3', reps: '20', rest: '45s' }
+      ]
+    }
+  ];
+
+  const warmupExercises = [
+    { name: 'Mobilidade Articular', duration: '3 minutos' },
+    { name: 'Caminhada Leve', duration: '5 minutos' },
+    { name: 'Alongamento Dinâmico', duration: '5 minutos' }
+  ];
+
+  const cooldownExercises = [
+    { name: 'Alongamento Estático', duration: '5 minutos' },
+    { name: 'Respiração Profunda', duration: '2 minutos' }
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <div className="flex items-center justify-center mb-6">
+          <div className="bg-[#f3e5f5] p-3 rounded-full">
+            <Dumbbell className="h-8 w-8 text-[#6a1b9a]" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-bold text-center text-[#6a1b9a] mb-6">
+          Seu Plano de Treino
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-[#6a1b9a] mb-2">Nível de Atividade</h3>
+            <p className="text-gray-700">{userRegistration.activity_level || 'Moderado'}</p>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <h3 className="font-semibold text-[#6a1b9a] mb-2">Preferência de Treino</h3>
+            <p className="text-gray-700">{userRegistration.training_preference || 'Musculação'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Aquecimento */}
+      <div className="warmup-section bg-white rounded-xl shadow-lg p-6 mb-8">
+        <h3 className="text-xl font-semibold text-[#6a1b9a] mb-4 flex items-center">
+          <Clock className="h-5 w-5 mr-2" />
+          Aquecimento
+        </h3>
+        <div className="space-y-4">
+          {warmupExercises.map((exercise, index) => (
+            <div key={index} className="flex justify-between items-center bg-purple-50 p-4 rounded-lg">
+              <span className="text-gray-700">{exercise.name}</span>
+              <span className="text-[#6a1b9a] font-medium">{exercise.duration}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Treinos */}
+      <div className="exercise-section space-y-8">
+        {workoutDays.map((day, dayIndex) => (
+          <div key={dayIndex} className="workout-day bg-white rounded-xl shadow-lg p-6">
+            <h3 className="text-xl font-semibold text-[#6a1b9a] mb-6">{day.day}</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-purple-50">
+                    <th className="px-4 py-2 text-left text-[#6a1b9a]">Exercício</th>
+                    <th className="px-4 py-2 text-center text-[#6a1b9a]">Séries</th>
+                    <th className="px-4 py-2 text-center text-[#6a1b9a]">Repetições</th>
+                    <th className="px-4 py-2 text-center text-[#6a1b9a]">Descanso</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {day.exercises.map((exercise, index) => (
+                    <tr key={index} className="border-b border-purple-100">
+                      <td className="px-4 py-3 text-gray-700">{exercise.name}</td>
+                      <td className="px-4 py-3 text-center text-gray-700">{exercise.sets}</td>
+                      <td className="px-4 py-3 text-center text-gray-700">{exercise.reps}</td>
+                      <td className="px-4 py-3 text-center text-gray-700">{exercise.rest}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Volta à Calma */}
+      <div className="cooldown-section bg-white rounded-xl shadow-lg p-6">
+        <h3 className="text-xl font-semibold text-[#6a1b9a] mb-4 flex items-center">
+          <Clock className="h-5 w-5 mr-2" />
+          Volta à Calma
+        </h3>
+        <div className="space-y-4">
+          {cooldownExercises.map((exercise, index) => (
+            <div key={index} className="flex justify-between items-center bg-purple-50 p-4 rounded-lg">
+              <span className="text-gray-700">{exercise.name}</span>
+              <span className="text-[#6a1b9a] font-medium">{exercise.duration}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Dicas e Observações */}
+      <div className="tips-section bg-white rounded-xl shadow-lg p-6">
+        <h3 className="text-xl font-semibold text-[#6a1b9a] mb-4">Dicas Importantes</h3>
+        <ul className="list-disc list-inside space-y-2 text-gray-700">
+          <li>Mantenha uma respiração controlada durante os exercícios</li>
+          <li>Beba água regularmente durante o treino</li>
+          <li>Mantenha a forma correta dos exercícios</li>
+          <li>Ajuste as cargas conforme necessário</li>
+          <li>Descanse adequadamente entre as séries</li>
+        </ul>
+      </div>
+    </div>
+  );
 }
 
-interface WorkoutDay {
-  id: string;
-  title: string;
-  intensity: 'Iniciante' | 'Intermediário' | 'Avançado';
-  duration: string;
-  warmup: string[];
-  exercises: Exercise[];
-  cooldown: string[];
-  tips: string[];
-}
-// Definição simplificada dos exercícios para academia e casa, com os tipos corretos
-const EXERCICIOS_ACADEMIA: Exercise[] = [
-  { name: 'Supino Reto', sets: '3', reps: '10', rest: '60s', notes: [] },
-  { name: 'Crucifixo', sets: '3', reps: '10', rest: '60s', notes: [] },
-  { name: 'Remada Curvada', sets: '3', reps: '10', rest: '60s', notes: [] },
-  { name: 'Rosca Direta', sets: '3', reps: '10', rest: '60s', notes: [] },
-  { name: 'Tríceps Pulley', sets: '3', reps: '10', rest: '60s', notes: [] },
-  { name: 'Leg Press', sets: '3', reps: '10', rest: '60s', notes: [] },
-  { name: 'Agachamento', sets: '3', reps: '10', rest: '60s', notes: [] },
-  { name: 'Panturrilha', sets: '3', reps: '15', rest: '45s', notes: [] },
-];
-
-const EXERCICIOS_CASA: Exercise[] = [
-  { name: 'Flexão de Braço', sets: '3', reps: '12', rest: '45s', notes: [] },
-  { name: 'Dips em Cadeira', sets: '3', reps: '12', rest: '45s', notes: [] },
-  { name: 'Superman', sets: '3', reps: '15', rest: '30s', notes: [] },
-  { name: 'Agachamento Livre', sets: '3', reps: '15', rest: '45s', notes: [] },
-  { name: 'Abdominal', sets: '3', reps: '20', rest: '30s', notes: [] },
-  { name: 'Prancha', sets: '3', reps: '30s', rest: '30s', notes: [] }, // reps = duração em segundos
-];
-
-// Mapeamento para dias e exercícios por nível de atividade
-const NIVEL_MAP = {
-  sedentario: { dias: 2, exerciciosPorDia: 4, intensidade: 'Iniciante' },
-  'levemente ativo': { dias: 3, exerciciosPorDia: 5, intensidade: 'Iniciante' },
-  'moderadamente ativo': { dias: 4, exerciciosPorDia: 6, intensidade: 'Intermediário' },
-  'altamente ativo': { dias: 5, exerciciosPorDia: 7, intensidade: 'Avançado' },
-  'extremamente ativo': { dias: 6, exerciciosPorDia: 8, intensidade: 'Avançado' },
-};
-function generateWorkoutPlan(userData) {
-  const niveis = {
-    sedentario: { dias: 2, intensidade: 'Iniciante', exerciciosPorDia: 4 },
-    leve: { dias: 3, intensidade: 'Iniciante', exerciciosPorDia: 5 },
-    moderado: { dias: 4, intensidade: 'Intermediário', exerciciosPorDia: 6 },
-    alto: { dias: 5, intensidade: 'Avançado', exerciciosPorDia: 8 },
-    extremo: { dias: 6, intensidade: 'Avançado', exerciciosPorDia: 10 },
-  };
-
-  // Pegue os dados do usuário (exemplo simplificado)
-  const nivel = userData.nivelAtividade.toLowerCase();
-
-  const plano = niveis[nivel] || niveis.leve;
-
-  const exerciciosAcademia = ['Supino Reto', 'Crucifixo', 'Remada', 'Rosca Direta'];
-  const exerciciosCasa = ['Flexão', 'Dips', 'Superman', 'Agachamento'];
-
-  const treino = [];
-
-  for (let dia = 1; dia <= plano.dias; dia++) {
-    treino.push({
-      dia: dia,
-      intensidade: plano.intensidade,
-      exercicios: (userData.prefereAcademia ? exerciciosAcademia : exerciciosCasa).slice(0, plano.exerciciosPorDia),
-    });
-  }
-
-  return treino;
-}
 export default TrainingPlan;
