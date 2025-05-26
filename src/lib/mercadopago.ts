@@ -42,7 +42,7 @@ export const createPaymentPreference = async (userId: string): Promise<PaymentPr
           email: session.user.email
         },
         back_urls: {
-          "success": "https://wondrous-yeot-7f10c4.netlify.app/payment/success",
+          "success": "https://wondrous-yeot-7f10c4.netlify.app/plan",
           "failure": "https://wondrous-yeot-7f10c4.netlify.app/payment/failure",
           "pending": "https://wondrous-yeot-7f10c4.netlify.app/payment/pending"
         },
