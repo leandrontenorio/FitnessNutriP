@@ -38,11 +38,38 @@ interface WorkoutDay {
   tips: string[];
 }
 
+function shuffleArray<T>(array: T[]): T[] {
+  const copy = [...array];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanProps) {
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>([]);
   const [isGym, setIsGym] = useState(false);
 
+  function generateExercises(type: string, intensity: string, isGym: boolean): Exercise[] {
+  const exercisesPerDay = {
+    leve: 4,
+    moderado: 5,
+    intenso: 6,
+  };
+
+  const pool = (type === 'Peito e Tríceps' && isGym) ? gymExercises.peitoTriceps :
+               (type === 'Costas e Bíceps' && isGym) ? gymExercises.costasBiceps :
+               (type === 'Pernas e Glúteos' && isGym) ? gymExercises.pernasGluteos :
+               (type === 'Ombros e Abdômen' && isGym) ? gymExercises.ombrosAbdomen :
+               (type === 'Full Body' && isGym) ? gymExercises.fullBody :
+               (type === 'Cardio e Core' && isGym) ? gymExercises.cardioCore :
+               homeExercises[type] || [];
+
+  const shuffled = shuffleArray(pool);
+  return shuffled.slice(0, exercisesPerDay[intensity]);
+}
   useEffect(() => {
     const generateWorkoutPlan = () => {
       // Se o usuário escolheu não ter treino, retorna plano vazio
