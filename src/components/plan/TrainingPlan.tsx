@@ -42,6 +42,17 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     loadTrainingPlan();
   }, [userRegistration]);
 
+  const formatGoal = (goal: string): string => {
+    const goalMap: { [key: string]: string } = {
+      'emagrecer': 'Emagrecimento',
+      'massa': 'Ganho de Massa Muscular',
+      'definicao': 'Definição Muscular',
+      'definicao_massa': 'Definição e Ganho de Massa',
+      'emagrecer_massa': 'Emagrecimento e Massa Muscular'
+    };
+    return goalMap[goal] || goal;
+  };
+
   const loadTrainingPlan = async () => {
     try {
       setLoading(true);
@@ -276,7 +287,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
               <Target className="h-5 w-5 text-[#6a1b9a] mr-2" />
               <h3 className="font-semibold text-[#6a1b9a]">Objetivo</h3>
             </div>
-            <p className="text-gray-700">{userRegistration.goal}</p>
+            <p className="text-gray-700">{formatGoal(userRegistration.goal)}</p>
           </div>
 
           <div className="bg-purple-50 p-4 rounded-lg md:col-span-2">
