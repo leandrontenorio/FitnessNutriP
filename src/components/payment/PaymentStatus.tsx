@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle, XCircle, Clock, ArrowRight } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -8,40 +8,46 @@ import toast from 'react-hot-toast';
 function PaymentStatus() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 10; // Maximum number of retries
-  const retryDelay = 3000; // 3 seconds between retries
+
+  const maxRetries = 10;
+  const retryDelay = 3000;
+
+  // Ref para controlar se polling está ativo e para evitar race condition
+  const pollingActiveRef = useRef(true);
+
+  // Função para checar status do plano
+  const checkPlanStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('has_paid_plan')
+        .eq('id', user.id)
+        .single();
+
+      const { data: plan } = await supabase
+        .from('nutritional_plans')
+        .select('id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      return profile?.has_paid_plan && !!plan?.id;
+    } catch (err) {
+      console.error('Error checking plan status:', err);
+      return false;
+    }
+  };
 
   useEffect(() => {
-    const checkPlanStatus = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('has_paid_plan')
-          .eq('id', user.id)
-          .single();
-
-        const { data: plan } = await supabase
-          .from('nutritional_plans')
-          .select('id')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        return profile?.has_paid_plan && plan?.id;
-      } catch (error) {
-        console.error('Error checking plan status:', error);
-        return false;
-      }
-    };
+    let pollTimeout: NodeJS.Timeout;
 
     const handlePaymentStatus = async () => {
       try {
@@ -54,53 +60,69 @@ function PaymentStatus() {
           throw new Error('Missing payment information');
         }
 
-        // Process the payment and update the database
         await processPayment(externalReference, paymentId, status);
 
         if (status === 'approved') {
-          // Poll for plan generation completion
-          const pollInterval = setInterval(async () => {
+          // Inicia polling manual com timeout para evitar concurrency e stale closures
+          const poll = async () => {
+            if (!pollingActiveRef.current) return;
+
             const hasPlan = await checkPlanStatus();
-            
+
             if (hasPlan) {
-              clearInterval(pollInterval);
               toast.success('Plano gerado com sucesso! Redirecionando...');
+              setLoading(false);
               navigate('/plan', { replace: true });
+              pollingActiveRef.current = false;
             } else {
               setRetryCount(prev => {
-                if (prev >= maxRetries) {
-                  clearInterval(pollInterval);
-                  throw new Error('Timeout waiting for plan generation');
+                if (prev + 1 >= maxRetries) {
+                  toast.error('Tempo esgotado para geração do plano. Por favor, contate o suporte.');
+                  setError('Tempo esgotado para geração do plano.');
+                  setLoading(false);
+                  pollingActiveRef.current = false;
+                  return prev; // não incrementa mais
                 }
                 return prev + 1;
               });
-            }
-          }, retryDelay);
 
-          // Cleanup interval on component unmount
-          return () => clearInterval(pollInterval);
+              if (pollingActiveRef.current) {
+                pollTimeout = setTimeout(poll, retryDelay);
+              }
+            }
+          };
+
+          poll(); // chama primeira vez
+        } else {
+          // Status não aprovado ou pendente - para de carregar
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Error processing payment status:', error);
+      } catch (err) {
+        console.error('Error processing payment status:', err);
         setError('Erro ao processar status do pagamento. Por favor, entre em contato com o suporte.');
         toast.error('Erro ao processar pagamento');
-      } finally {
         setLoading(false);
       }
     };
 
     handlePaymentStatus();
+
+    // Cleanup no unmount
+    return () => {
+      pollingActiveRef.current = false;
+      if (pollTimeout) clearTimeout(pollTimeout);
+    };
   }, [location, navigate]);
 
   const getStatusContent = () => {
     const params = new URLSearchParams(location.search);
     const status = params.get('collection_status') || params.get('status');
-    
+
     if (status === 'approved') {
       return {
         icon: <CheckCircle className="h-16 w-16 text-green-500" />,
         title: 'Pagamento Aprovado!',
-        message: retryCount > 0 
+        message: retryCount > 0
           ? 'Gerando seu plano personalizado... Por favor, aguarde.'
           : 'Seu plano está sendo gerado. Você será redirecionado em alguns instantes...',
         buttonText: 'Ir para Meu Plano',
@@ -145,9 +167,7 @@ function PaymentStatus() {
           {content.icon}
           <h1 className="text-2xl font-bold text-gray-900">{content.title}</h1>
           <p className="text-gray-600">{content.message}</p>
-          {error && (
-            <p className="text-red-500 text-sm">{error}</p>
-          )}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
           {retryCount > 0 && retryCount < maxRetries && (
             <div className="flex items-center justify-center space-x-2">
               <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-purple-600"></div>
