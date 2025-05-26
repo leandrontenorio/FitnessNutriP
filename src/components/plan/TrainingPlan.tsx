@@ -95,111 +95,111 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
         if (isGymTraining) {
           switch (type) {
             case 'Peito e Tríceps':
-  exercises.push(
-    { name: 'Supino Reto com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Mantenha os cotovelos alinhados'] },
-    { name: 'Supino Inclinado com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Controle do movimento'] },
-    { name: 'Crucifixo com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Movimento controlado'] },
-    { name: 'Crossover no Cabo', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Alongue o peitoral'] },
-    { name: 'Paralelas', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Cotovelos junto ao corpo'] },
-    { name: 'Tríceps Testa com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Evite esticar demais os cotovelos'] },
-    { name: 'Mergulho entre Bancos', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Postura ereta'] },
-    { name: 'Supino Declinado', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Foque na parte inferior do peitoral'] },
-    { name: 'Tríceps na Corda', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Controle no movimento'] },
-    { name: 'Pullover com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Respiração constante'] }
-  );
-  break;
-
-case 'Costas e Bíceps':
-  exercises.push(
-    { name: 'Puxada na Frente (Pulldown)', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Costas retas'] },
-    { name: 'Barra Fixa', sets: baseSets, reps: 'Até falha', rest: baseRest, notes: ['Controle no movimento'] },
-    { name: 'Remada Curvada com Barra', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Coluna neutra'] },
-    { name: 'Remada Unilateral com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Amplitude completa'] },
-    { name: 'Rosca Direta com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Sem balanço'] },
-    { name: 'Rosca Martelo com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Punho neutro'] },
-    { name: 'Puxada na Barra T', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Postura correta'] },
-    { name: 'Rosca Concentrada', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Foco no bíceps'] },
-    { name: 'Remada Cavalinho (T-Bar Row)', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Respiração constante'] },
-    { name: 'Rosca Inversa', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Punho em pronação'] }
-  );
-  break;
-
-case 'Pernas':
-  exercises.push(
-    { name: 'Agachamento Livre', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Joelhos alinhados aos pés'] },
-    { name: 'Leg Press 45°', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Respiração controlada'] },
-    { name: 'Mesa Flexora', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Foco no movimento'] },
-    { name: 'Mesa Extensora', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Controle do peso'] },
-    { name: 'Avanço com Halteres', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Postura ereta'] },
-    { name: 'Stiff com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Alongue bem os isquiotibiais'] },
-    { name: 'Cadeira Abdutora', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Movimento controlado'] },
-    { name: 'Elevação de Panturrilha no Leg Press', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Amplitude completa'] },
-    { name: 'Agachamento Sumô', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Pés apontando para fora'] },
-    { name: 'Glúteo na Polia Baixa', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Contraia o glúteo'] }
-  );
-  break;
-
-case 'Ombros e Abdômen':
-  exercises.push(
-    { name: 'Desenvolvimento com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Evite usar o pescoço'] },
-    { name: 'Elevação Lateral', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Movimento lateral controlado'] },
-    { name: 'Prancha', sets: baseSets, reps: '30-60s', rest: baseRest, notes: ['Core firme'] },
-    { name: 'Elevação Frontal com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Controle na subida'] },
-    { name: 'Arnold Press', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Amplitude total'] },
-    { name: 'Abdominal Remador', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Movimento fluido'] },
-    { name: 'Elevação de Pernas Suspenso', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Contraia o abdômen'] },
-    { name: 'Elevação Posterior com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Foco nos deltoides posteriores'] },
-    { name: 'Crunch com Peso', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Contração máxima'] },
-    { name: 'Elevação Lateral no Cabo', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Amplitude controlada'] }
-  );
-  break;
-
-default:
-  exercises.push(
-    { name: 'Treino Funcional de Corpo Inteiro', sets: baseSets, reps: '15', rest: baseRest, notes: ['Alta intensidade'] }
-  );
-}
-} else {
-switch (type) {
-  case 'Parte Superior':
-    exercises.push(
-      { name: 'Flexão de Braço', sets: baseSets, reps: '10-15', rest: baseRest, notes: ['Core ativado'] },
-      { name: 'Dips em Cadeira', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Cotovelos junto ao corpo'] },
-      { name: 'Remada com Toalha ou Elástico', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Postura correta'] },
-      { name: 'Flexão com Palms-off', sets: baseSets, reps: '8-12', rest: baseRest, notes: ['Maior amplitude'] },
-      { name: 'Prancha Dinâmica', sets: baseSets, reps: '30-45s', rest: baseRest, notes: ['Core ativo'] },
-      { name: 'Remada Australiana', sets: baseSets, reps: '10-15', rest: baseRest, notes: ['Controle do corpo'] },
-      { name: 'Pike Push-up', sets: baseSets, reps: '8-12', rest: baseRest, notes: ['Foco nos ombros'] },
-      { name: 'Flexão Diamante', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Foco no tríceps'] },
-      { name: 'Flexão Arqueiro', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Amplitude maior'] },
-      { name: 'Prancha com Elevação Alternada de Braços', sets: baseSets, reps: '30s', rest: baseRest, notes: ['Estabilidade'] }
-    );
-    break;
-
-  case 'Parte Inferior':
-    exercises.push(
-      { name: 'Agachamento Livre', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Joelhos alinhados'] },
-      { name: 'Afundo com Peso Corporal', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Postura ereta'] },
-      { name: 'Panturrilha em Pé', sets: baseSets, reps: '20', rest: baseRest, notes: ['Movimento completo'] },
-      { name: 'Agachamento Pistola', sets: baseSets, reps: '8-10 por perna', rest: baseRest, notes: ['Controle do movimento'] },
-      { name: 'Ponte de Glúteos', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Contração do glúteo'] },
-      { name: 'Step-up em banco', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Postura ereta'] },
-      { name: 'Elevação de Panturrilha em Pé', sets: baseSets, reps: '20-25', rest: baseRest, notes: ['Amplitude máxima'] },
-      { name: 'Agachamento Isométrico na Parede', sets: baseSets, reps: '30-60s', rest: baseRest, notes: ['Postura correta'] },
-      { name: 'Salto no Lugar (Jump Squat)', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Explosão muscular'] },
-      { name: 'Avanço Dinâmico (Walking Lunge)', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Amplitude completa'] }
-    );
-    break;
-
-  case 'Core e Cardio':
-    exercises.push(
-      { name: 'Abdominal Bicicleta', sets: baseSets,
-            default:
-              exercises.push(
-                { name: 'Exercício Funcional', sets: baseSets, reps: '12', rest: baseRest, notes: ['Manter forma correta'] }
-              );
-          }
-        }
+                exercises.push(
+                  { name: 'Supino Reto com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Mantenha os cotovelos alinhados'] },
+                  { name: 'Supino Inclinado com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Controle do movimento'] },
+                  { name: 'Crucifixo com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Movimento controlado'] },
+                  { name: 'Crossover no Cabo', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Alongue o peitoral'] },
+                  { name: 'Paralelas', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Cotovelos junto ao corpo'] },
+                  { name: 'Tríceps Testa com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Evite esticar demais os cotovelos'] },
+                  { name: 'Mergulho entre Bancos', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Postura ereta'] },
+                  { name: 'Supino Declinado', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Foque na parte inferior do peitoral'] },
+                  { name: 'Tríceps na Corda', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Controle no movimento'] },
+                  { name: 'Pullover com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Respiração constante'] }
+                );
+                break;
+              
+              case 'Costas e Bíceps':
+                exercises.push(
+                  { name: 'Puxada na Frente (Pulldown)', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Costas retas'] },
+                  { name: 'Barra Fixa', sets: baseSets, reps: 'Até falha', rest: baseRest, notes: ['Controle no movimento'] },
+                  { name: 'Remada Curvada com Barra', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Coluna neutra'] },
+                  { name: 'Remada Unilateral com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Amplitude completa'] },
+                  { name: 'Rosca Direta com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Sem balanço'] },
+                  { name: 'Rosca Martelo com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Punho neutro'] },
+                  { name: 'Puxada na Barra T', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Postura correta'] },
+                  { name: 'Rosca Concentrada', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Foco no bíceps'] },
+                  { name: 'Remada Cavalinho (T-Bar Row)', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Respiração constante'] },
+                  { name: 'Rosca Inversa', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Punho em pronação'] }
+                );
+                break;
+              
+              case 'Pernas':
+                exercises.push(
+                  { name: 'Agachamento Livre', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Joelhos alinhados aos pés'] },
+                  { name: 'Leg Press 45°', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Respiração controlada'] },
+                  { name: 'Mesa Flexora', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Foco no movimento'] },
+                  { name: 'Mesa Extensora', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Controle do peso'] },
+                  { name: 'Avanço com Halteres', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Postura ereta'] },
+                  { name: 'Stiff com Barra', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Alongue bem os isquiotibiais'] },
+                  { name: 'Cadeira Abdutora', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Movimento controlado'] },
+                  { name: 'Elevação de Panturrilha no Leg Press', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Amplitude completa'] },
+                  { name: 'Agachamento Sumô', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Pés apontando para fora'] },
+                  { name: 'Glúteo na Polia Baixa', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Contraia o glúteo'] }
+                );
+                break;
+              
+              case 'Ombros e Abdômen':
+                exercises.push(
+                  { name: 'Desenvolvimento com Halteres', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Evite usar o pescoço'] },
+                  { name: 'Elevação Lateral', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Movimento lateral controlado'] },
+                  { name: 'Prancha', sets: baseSets, reps: '30-60s', rest: baseRest, notes: ['Core firme'] },
+                  { name: 'Elevação Frontal com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Controle na subida'] },
+                  { name: 'Arnold Press', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Amplitude total'] },
+                  { name: 'Abdominal Remador', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Movimento fluido'] },
+                  { name: 'Elevação de Pernas Suspenso', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Contraia o abdômen'] },
+                  { name: 'Elevação Posterior com Halteres', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Foco nos deltoides posteriores'] },
+                  { name: 'Crunch com Peso', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Contração máxima'] },
+                  { name: 'Elevação Lateral no Cabo', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Amplitude controlada'] }
+                );
+                break;
+              
+              default:
+                exercises.push(
+                  { name: 'Treino Funcional de Corpo Inteiro', sets: baseSets, reps: '15', rest: baseRest, notes: ['Alta intensidade'] }
+                );
+              }
+              } else {
+              switch (type) {
+                case 'Parte Superior':
+                  exercises.push(
+                    { name: 'Flexão de Braço', sets: baseSets, reps: '10-15', rest: baseRest, notes: ['Core ativado'] },
+                    { name: 'Dips em Cadeira', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Cotovelos junto ao corpo'] },
+                    { name: 'Remada com Toalha ou Elástico', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Postura correta'] },
+                    { name: 'Flexão com Palms-off', sets: baseSets, reps: '8-12', rest: baseRest, notes: ['Maior amplitude'] },
+                    { name: 'Prancha Dinâmica', sets: baseSets, reps: '30-45s', rest: baseRest, notes: ['Core ativo'] },
+                    { name: 'Remada Australiana', sets: baseSets, reps: '10-15', rest: baseRest, notes: ['Controle do corpo'] },
+                    { name: 'Pike Push-up', sets: baseSets, reps: '8-12', rest: baseRest, notes: ['Foco nos ombros'] },
+                    { name: 'Flexão Diamante', sets: baseSets, reps: '10-12', rest: baseRest, notes: ['Foco no tríceps'] },
+                    { name: 'Flexão Arqueiro', sets: baseSets, reps: '8-10', rest: baseRest, notes: ['Amplitude maior'] },
+                    { name: 'Prancha com Elevação Alternada de Braços', sets: baseSets, reps: '30s', rest: baseRest, notes: ['Estabilidade'] }
+                  );
+                  break;
+              
+                case 'Parte Inferior':
+                  exercises.push(
+                    { name: 'Agachamento Livre', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Joelhos alinhados'] },
+                    { name: 'Afundo com Peso Corporal', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Postura ereta'] },
+                    { name: 'Panturrilha em Pé', sets: baseSets, reps: '20', rest: baseRest, notes: ['Movimento completo'] },
+                    { name: 'Agachamento Pistola', sets: baseSets, reps: '8-10 por perna', rest: baseRest, notes: ['Controle do movimento'] },
+                    { name: 'Ponte de Glúteos', sets: baseSets, reps: '15-20', rest: baseRest, notes: ['Contração do glúteo'] },
+                    { name: 'Step-up em banco', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Postura ereta'] },
+                    { name: 'Elevação de Panturrilha em Pé', sets: baseSets, reps: '20-25', rest: baseRest, notes: ['Amplitude máxima'] },
+                    { name: 'Agachamento Isométrico na Parede', sets: baseSets, reps: '30-60s', rest: baseRest, notes: ['Postura correta'] },
+                    { name: 'Salto no Lugar (Jump Squat)', sets: baseSets, reps: '12-15', rest: baseRest, notes: ['Explosão muscular'] },
+                    { name: 'Avanço Dinâmico (Walking Lunge)', sets: baseSets, reps: '12 por perna', rest: baseRest, notes: ['Amplitude completa'] }
+                  );
+                  break;
+              
+                case 'Core e Cardio':
+                  exercises.push(
+                    { name: 'Abdominal Bicicleta', sets: baseSets,
+                          default:
+                            exercises.push(
+                              { name: 'Exercício Funcional', sets: baseSets, reps: '12', rest: baseRest, notes: ['Manter forma correta'] }
+                            );
+                        }
+                      }
 
         return exercises;
       };
