@@ -41,6 +41,7 @@ interface WorkoutDay {
 function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanProps) {
   const [expandedDay, setExpandedDay] = useState<string | null>(null);
   const [workoutPlan, setWorkoutPlan] = useState<WorkoutDay[]>([]);
+  const [isGym, setIsGym] = useState(false);
 
   useEffect(() => {
     const generateWorkoutPlan = () => {
@@ -50,7 +51,8 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
       }
 
       const activityLevel = userRegistration.activity_level || 'Sedentário';
-      const isGym = (userRegistration.training_preference || '').includes('academia');
+      const isGymTraining = (userRegistration.training_preference || '').includes('academia');
+      setIsGym(isGymTraining);
 
       let daysPerWeek = 3;
       let exercisesPerDay = 6;
@@ -85,7 +87,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
           break;
       }
 
-      const workoutTypes = isGym ? 
+      const workoutTypes = isGymTraining ? 
         ['Peito e Tríceps', 'Costas e Bíceps', 'Pernas', 'Ombros e Abdômen', 'Full Body', 'Cardio e Core'] :
         ['Parte Superior', 'Parte Inferior', 'Core e Cardio', 'Full Body', 'Mobilidade', 'Resistência'];
 
@@ -94,7 +96,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
         const baseRest = intensity === 'Iniciante' ? '45s' : intensity === 'Intermediário' ? '60s' : '90s';
         const baseSets = intensity === 'Iniciante' ? '3' : intensity === 'Intermediário' ? '4' : '5';
 
-        if (isGym) {
+        if (isGymTraining) {
           switch (type) {
             case 'Peito e Tríceps':
               exercises.push(
@@ -179,7 +181,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     };
 
     setWorkoutPlan(generateWorkoutPlan());
-  }, [userRegistration, isGym]);
+  }, [userRegistration]);
 
   // Se o usuário escolheu não ter treino, mostra mensagem
   if (userRegistration.training_preference === 'Não') {
