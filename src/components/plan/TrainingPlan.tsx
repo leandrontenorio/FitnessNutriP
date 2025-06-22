@@ -20,27 +20,13 @@ interface TrainingPlanProps {
 }
 
 interface Exercise {
-  id: number;
-  nome: string;
-  grupo_muscular: string;
-  equipamento: string;
-  series: number;
-  repeticoes: string;
-  descanso: string;
-  nivel: string;
-  objetivos: string[];
-  observacoes: string;
-  gif_url?: string;
-}
-
-interface FormattedExercise {
   name: string;
   sets: string;
   reps: string;
   rest: string;
   notes: string[];
-  muscleGroup: string;
-  equipment: string;
+  muscleGroup?: string;
+  equipment?: string;
 }
 
 interface WorkoutDay {
@@ -49,10 +35,9 @@ interface WorkoutDay {
   intensity: 'Iniciante' | 'Intermediário' | 'Avançado';
   duration: string;
   warmup: string[];
-  exercises: FormattedExercise[];
+  exercises: Exercise[];
   cooldown: string[];
   tips: string[];
-  focus: string;
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -70,299 +55,291 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (userRegistration) {
-      fetchAndGenerateWorkout();
-    }
-  }, [userRegistration]);
-
+  // Map user goals to database objectives
   const mapGoalToObjective = (goal: string): string => {
-    const goalMapping: { [key: string]: string } = {
+    const goalMap: { [key: string]: string } = {
       'emagrecer': 'emagrecimento',
       'massa': 'ganho_massa',
       'definicao': 'definicao',
-      'definicao_massa': 'ganho_massa',
+      'definicao_massa': 'definicao',
       'emagrecer_massa': 'emagrecimento'
     };
-    return goalMapping[goal] || 'ganho_massa';
+    return goalMap[goal] || 'definicao';
   };
 
-  const getIntensityLevel = (): string => {
-    const { activity_level } = userRegistration;
-    
-    if (!activity_level) return 'iniciante';
-    
-    if (activity_level.includes('Sedentário') || activity_level.includes('Levemente ativo')) {
-      return 'iniciante';
-    } else if (activity_level.includes('Moderadamente ativo')) {
-      return 'intermediario';
-    } else if (activity_level.includes('Altamente ativo') || activity_level.includes('Extremamente ativo')) {
-      return 'avancado';
+  // Determine intensity level based on activity level
+  const getIntensityLevel = (activityLevel: string): 'Iniciante' | 'Intermediário' | 'Avançado' => {
+    if (activityLevel?.includes('Sedentário') || activityLevel?.includes('Levemente ativo')) {
+      return 'Iniciante';
+    } else if (activityLevel?.includes('Moderadamente ativo')) {
+      return 'Intermediário';
+    } else {
+      return 'Avançado';
     }
-    
-    return 'iniciante';
   };
 
-  const getEquipmentType = (): string => {
-    const { training_preference } = userRegistration;
-    
-    if (!training_preference) return 'peso_corporal';
-    
-    if (training_preference.includes('academia')) {
-      return 'academia';
-    } else if (training_preference.includes('casa')) {
-      return 'peso_corporal';
-    }
-    
-    return 'peso_corporal';
-  };
-
+  // Fetch exercises from Supabase and generate workout
   const fetchAndGenerateWorkout = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Se o usuário escolheu não ter treino, retorna plano vazio
+      const objective = mapGoalToObjective(userRegistration.goal);
+      const intensity = getIntensityLevel(userRegistration.activity_level || '');
+      const isGym = userRegistration.training_preference?.includes('academia') || false;
+
+      // Map intensity to database level
+      const levelMap = {
+        'Iniciante': 'iniciante',
+        'Intermediário': 'intermediario',
+        'Avançado': 'avancado'
+      };
+      const dbLevel = levelMap[intensity];
+
+      console.log('Fetching exercises with:', { objective, level: dbLevel, isGym });
+
+      // Build query - using ilike for text search instead of array operators
+      let query = supabase
+        .from('exercises')
+        .select('*')
+        .eq('nivel', dbLevel)
+        .ilike('objetivos', `%${objective}%`) // Use ilike for text search
+        .limit(50);
+
+      // Add equipment filter if needed
+      if (isGym) {
+        query = query.neq('equipamento', 'peso_corporal');
+      } else {
+        query = query.eq('equipamento', 'peso_corporal');
+      }
+
+      const { data: exercises, error: fetchError } = await query;
+
+      if (fetchError) {
+        console.error('Supabase query error:', fetchError);
+        throw new Error(`Erro ao buscar exercícios: ${fetchError.message}`);
+      }
+
+      if (!exercises || exercises.length === 0) {
+        console.log('No exercises found, trying fallback query...');
+        
+        // Fallback: get exercises without objective filter
+        const { data: fallbackExercises, error: fallbackError } = await supabase
+          .from('exercises')
+          .select('*')
+          .eq('nivel', dbLevel)
+          .limit(50);
+
+        if (fallbackError) {
+          throw new Error(`Erro ao buscar exercícios alternativos: ${fallbackError.message}`);
+        }
+
+        if (!fallbackExercises || fallbackExercises.length === 0) {
+          throw new Error('Nenhum exercício encontrado no banco de dados');
+        }
+
+        console.log(`Found ${fallbackExercises.length} fallback exercises`);
+        return generateWorkoutPlan(fallbackExercises, intensity);
+      }
+
+      console.log(`Found ${exercises.length} exercises`);
+      return generateWorkoutPlan(exercises, intensity);
+
+    } catch (error) {
+      console.error('Error in fetchAndGenerateWorkout:', error);
+      setError(error instanceof Error ? error.message : 'Erro ao carregar exercícios do banco de dados');
+      throw error;
+    }
+  };
+
+  // Generate workout plan from exercises
+  const generateWorkoutPlan = (exercises: any[], intensity: 'Iniciante' | 'Intermediário' | 'Avançado'): WorkoutDay[] => {
+    const shuffledExercises = shuffleArray(exercises);
+    
+    // Determine workout parameters based on intensity
+    const workoutParams = {
+      'Iniciante': { days: 3, exercisesPerDay: 4, duration: 35 },
+      'Intermediário': { days: 4, exercisesPerDay: 5, duration: 45 },
+      'Avançado': { days: 5, exercisesPerDay: 6, duration: 60 }
+    };
+
+    const params = workoutParams[intensity];
+    const workoutDays: WorkoutDay[] = [];
+
+    // Define workout focuses for each day
+    const dayFocuses = [
+      'Peito e Tríceps',
+      'Costas e Bíceps', 
+      'Pernas e Glúteos',
+      'Ombros e Abdômen',
+      'Full Body',
+      'Cardio e Core'
+    ];
+
+    for (let i = 0; i < params.days; i++) {
+      const dayExercises = shuffledExercises
+        .slice(i * params.exercisesPerDay, (i + 1) * params.exercisesPerDay)
+        .map(ex => ({
+          name: ex.nome || 'Exercício',
+          sets: ex.series?.toString() || '3',
+          reps: ex.repeticoes || '10-12',
+          rest: ex.descanso || '60s',
+          notes: ex.observacoes ? [ex.observacoes] : ['Execute com boa forma'],
+          muscleGroup: ex.grupo_muscular || '',
+          equipment: ex.equipamento || ''
+        }));
+
+      workoutDays.push({
+        id: `day-${i + 1}`,
+        title: `Dia ${i + 1}: ${dayFocuses[i] || 'Treino Geral'}`,
+        intensity,
+        duration: `${params.duration} minutos`,
+        warmup: [
+          'Mobilidade articular - 5 minutos',
+          'Alongamento dinâmico - 5 minutos',
+          'Aquecimento específico - 5 minutos'
+        ],
+        exercises: dayExercises,
+        cooldown: [
+          'Alongamento estático - 5 minutos',
+          'Respiração e relaxamento - 3 minutos'
+        ],
+        tips: [
+          'Mantenha-se hidratado durante o treino',
+          'Foque na execução correta dos movimentos',
+          'Ajuste as cargas conforme necessário',
+          'Respeite os tempos de descanso'
+        ]
+      });
+    }
+
+    return workoutDays;
+  };
+
+  useEffect(() => {
+    const generatePlan = async () => {
+      // If user chose not to include training
       if (userRegistration.training_preference === 'Não') {
         setWorkoutPlan([]);
         setLoading(false);
         return;
       }
 
-      const objective = mapGoalToObjective(userRegistration.goal);
-      const intensityLevel = getIntensityLevel();
-      const equipmentType = getEquipmentType();
-
-      console.log('Buscando exercícios com:', { objective, intensityLevel, equipmentType });
-
-      // Buscar exercícios da tabela exercises
-      let query = supabase
-        .from('exercises')
-        .select('*')
-        .eq('nivel', intensityLevel);
-
-      // Filtrar por objetivo se disponível
-      if (objective) {
-        query = query.contains('objetivos', [objective]);
+      try {
+        const plan = await fetchAndGenerateWorkout();
+        setWorkoutPlan(plan);
+      } catch (error) {
+        console.error('Error generating workout plan:', error);
+        setError('Erro ao gerar plano de treino');
+        
+        // Generate fallback plan with static exercises
+        const fallbackPlan = generateFallbackPlan();
+        setWorkoutPlan(fallbackPlan);
+      } finally {
+        setLoading(false);
       }
-
-      // Filtrar por equipamento se for treino em casa
-      if (equipmentType === 'peso_corporal') {
-        query = query.in('equipamento', ['peso_corporal', 'elastico', 'sem_equipamento']);
-      }
-
-      const { data: exercises, error: fetchError } = await query.limit(50);
-
-      if (fetchError) {
-        console.error('Erro ao buscar exercícios:', fetchError);
-        throw new Error('Erro ao carregar exercícios do banco de dados');
-      }
-
-      if (!exercises || exercises.length === 0) {
-        // Fallback: buscar exercícios sem filtros específicos
-        const { data: fallbackExercises, error: fallbackError } = await supabase
-          .from('exercises')
-          .select('*')
-          .eq('nivel', intensityLevel)
-          .limit(30);
-
-        if (fallbackError || !fallbackExercises || fallbackExercises.length === 0) {
-          throw new Error('Nenhum exercício encontrado no banco de dados');
-        }
-
-        generateWorkoutPlan(fallbackExercises, intensityLevel);
-      } else {
-        generateWorkoutPlan(exercises, intensityLevel);
-      }
-
-    } catch (err) {
-      console.error('Erro ao gerar plano de treino:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const generateWorkoutPlan = (exercises: Exercise[], intensity: string) => {
-    const daysPerWeek = getDaysPerWeek();
-    const exercisesPerDay = getExercisesPerDay();
-    
-    // Agrupar exercícios por grupo muscular
-    const exercisesByMuscle = exercises.reduce((acc, exercise) => {
-      const muscle = exercise.grupo_muscular;
-      if (!acc[muscle]) acc[muscle] = [];
-      acc[muscle].push(exercise);
-      return acc;
-    }, {} as { [key: string]: Exercise[] });
-
-    // Definir focos para cada dia
-    const dayFocuses = getDayFocuses(daysPerWeek);
-    
-    const workoutDays: WorkoutDay[] = [];
-
-    for (let i = 0; i < daysPerWeek; i++) {
-      const focus = dayFocuses[i];
-      const dayExercises = selectExercisesForDay(exercisesByMuscle, focus, exercisesPerDay);
-      
-      workoutDays.push({
-        id: `day-${i + 1}`,
-        title: `Dia ${i + 1}: ${focus}`,
-        intensity: intensity === 'iniciante' ? 'Iniciante' : 
-                  intensity === 'intermediario' ? 'Intermediário' : 'Avançado',
-        duration: `${exercisesPerDay * 4 + 15} minutos`,
-        focus: focus,
-        warmup: getWarmupRoutine(),
-        exercises: dayExercises.map(formatExercise),
-        cooldown: getCooldownRoutine(),
-        tips: getWorkoutTips(focus)
-      });
-    }
-
-    setWorkoutPlan(workoutDays);
-  };
-
-  const getDaysPerWeek = (): number => {
-    const { activity_level } = userRegistration;
-    
-    if (!activity_level) return 3;
-    
-    if (activity_level.includes('Sedentário')) return 2;
-    if (activity_level.includes('Levemente ativo')) return 3;
-    if (activity_level.includes('Moderadamente ativo')) return 4;
-    if (activity_level.includes('Altamente ativo')) return 5;
-    if (activity_level.includes('Extremamente ativo')) return 6;
-    
-    return 3;
-  };
-
-  const getExercisesPerDay = (): number => {
-    const intensity = getIntensityLevel();
-    
-    switch (intensity) {
-      case 'iniciante': return 4;
-      case 'intermediario': return 5;
-      case 'avancado': return 6;
-      default: return 4;
-    }
-  };
-
-  const getDayFocuses = (daysPerWeek: number): string[] => {
-    const isGym = userRegistration.training_preference?.includes('academia');
-    
-    if (isGym) {
-      switch (daysPerWeek) {
-        case 2: return ['Corpo Superior', 'Corpo Inferior'];
-        case 3: return ['Peito e Tríceps', 'Costas e Bíceps', 'Pernas e Glúteos'];
-        case 4: return ['Peito e Tríceps', 'Costas e Bíceps', 'Pernas e Glúteos', 'Ombros e Core'];
-        case 5: return ['Peito', 'Costas', 'Pernas', 'Ombros', 'Braços'];
-        case 6: return ['Peito e Tríceps', 'Costas e Bíceps', 'Pernas', 'Ombros', 'Braços', 'Core e Cardio'];
-        default: return ['Corpo Superior', 'Corpo Inferior', 'Full Body'];
-      }
-    } else {
-      switch (daysPerWeek) {
-        case 2: return ['Corpo Superior', 'Corpo Inferior'];
-        case 3: return ['Corpo Superior', 'Corpo Inferior', 'Core e Cardio'];
-        case 4: return ['Corpo Superior', 'Corpo Inferior', 'Core e Cardio', 'Full Body'];
-        default: return ['Corpo Superior', 'Corpo Inferior', 'Full Body'];
-      }
-    }
-  };
-
-  const selectExercisesForDay = (
-    exercisesByMuscle: { [key: string]: Exercise[] },
-    focus: string,
-    count: number
-  ): Exercise[] => {
-    const muscleGroups = getMuscleGroupsForFocus(focus);
-    const selectedExercises: Exercise[] = [];
-    
-    // Distribuir exercícios pelos grupos musculares do foco
-    const exercisesPerGroup = Math.ceil(count / muscleGroups.length);
-    
-    for (const muscleGroup of muscleGroups) {
-      const availableExercises = exercisesByMuscle[muscleGroup] || [];
-      const shuffled = shuffleArray(availableExercises);
-      const selected = shuffled.slice(0, exercisesPerGroup);
-      selectedExercises.push(...selected);
-    }
-    
-    // Se não temos exercícios suficientes, pegar de qualquer grupo
-    if (selectedExercises.length < count) {
-      const allExercises = Object.values(exercisesByMuscle).flat();
-      const remaining = shuffleArray(allExercises)
-        .filter(ex => !selectedExercises.some(sel => sel.id === ex.id))
-        .slice(0, count - selectedExercises.length);
-      selectedExercises.push(...remaining);
-    }
-    
-    return selectedExercises.slice(0, count);
-  };
-
-  const getMuscleGroupsForFocus = (focus: string): string[] => {
-    const focusMapping: { [key: string]: string[] } = {
-      'Peito e Tríceps': ['peito', 'triceps'],
-      'Costas e Bíceps': ['costas', 'biceps'],
-      'Pernas e Glúteos': ['pernas', 'gluteos', 'quadriceps', 'posterior_coxa'],
-      'Ombros e Core': ['ombros', 'core', 'abdomen'],
-      'Corpo Superior': ['peito', 'costas', 'ombros', 'biceps', 'triceps'],
-      'Corpo Inferior': ['pernas', 'gluteos', 'quadriceps', 'posterior_coxa'],
-      'Core e Cardio': ['core', 'abdomen', 'cardio'],
-      'Full Body': ['peito', 'costas', 'pernas', 'ombros', 'core'],
-      'Peito': ['peito'],
-      'Costas': ['costas'],
-      'Pernas': ['pernas', 'quadriceps', 'posterior_coxa'],
-      'Ombros': ['ombros'],
-      'Braços': ['biceps', 'triceps']
-    };
-    
-    return focusMapping[focus] || ['peito', 'costas', 'pernas'];
-  };
-
-  const formatExercise = (exercise: Exercise): FormattedExercise => {
-    return {
-      name: exercise.nome,
-      sets: `${exercise.series}`,
-      reps: exercise.repeticoes,
-      rest: exercise.descanso,
-      notes: exercise.observacoes ? [exercise.observacoes] : [],
-      muscleGroup: exercise.grupo_muscular,
-      equipment: exercise.equipamento
-    };
-  };
-
-  const getWarmupRoutine = (): string[] => {
-    return [
-      'Mobilidade articular - 3 minutos',
-      'Alongamento dinâmico - 4 minutos',
-      'Ativação cardiovascular leve - 3 minutos'
-    ];
-  };
-
-  const getCooldownRoutine = (): string[] => {
-    return [
-      'Alongamento estático - 5 minutos',
-      'Respiração e relaxamento - 2 minutos'
-    ];
-  };
-
-  const getWorkoutTips = (focus: string): string[] => {
-    const baseTips = [
-      'Mantenha-se hidratado durante o treino',
-      'Foque na execução correta dos movimentos',
-      'Ajuste as cargas conforme necessário'
-    ];
-
-    const focusSpecificTips: { [key: string]: string[] } = {
-      'Peito e Tríceps': ['Controle a descida do peso', 'Mantenha os cotovelos estáveis'],
-      'Costas e Bíceps': ['Puxe com as costas, não apenas com os braços', 'Mantenha a postura ereta'],
-      'Pernas e Glúteos': ['Mantenha os joelhos alinhados', 'Ative bem os glúteos'],
-      'Core e Cardio': ['Mantenha o core sempre ativado', 'Respire de forma controlada']
     };
 
-    return [...baseTips, ...(focusSpecificTips[focus] || [])];
+    generatePlan();
+  }, [userRegistration]);
+
+  // Generate fallback plan with static exercises
+  const generateFallbackPlan = (): WorkoutDay[] => {
+    const intensity = getIntensityLevel(userRegistration.activity_level || '');
+    const isGym = userRegistration.training_preference?.includes('academia') || false;
+
+    const staticExercises = isGym ? [
+      { name: 'Supino Reto', sets: '3', reps: '10-12', rest: '60s', notes: ['Mantenha os cotovelos alinhados'] },
+      { name: 'Puxada Frontal', sets: '3', reps: '10-12', rest: '60s', notes: ['Costas retas'] },
+      { name: 'Agachamento Livre', sets: '3', reps: '8-10', rest: '90s', notes: ['Joelhos alinhados aos pés'] },
+      { name: 'Desenvolvimento', sets: '3', reps: '10-12', rest: '60s', notes: ['Evite usar o pescoço'] },
+      { name: 'Rosca Direta', sets: '3', reps: '10-12', rest: '45s', notes: ['Sem balanço'] },
+      { name: 'Tríceps Testa', sets: '3', reps: '10-12', rest: '45s', notes: ['Cotovelos fixos'] }
+    ] : [
+      { name: 'Flexão de Braço', sets: '3', reps: '10-15', rest: '45s', notes: ['Core ativado'] },
+      { name: 'Agachamento Livre', sets: '3', reps: '15-20', rest: '45s', notes: ['Joelhos alinhados'] },
+      { name: 'Prancha', sets: '3', reps: '30-60s', rest: '45s', notes: ['Core firme'] },
+      { name: 'Afundo', sets: '3', reps: '12 por perna', rest: '45s', notes: ['Postura ereta'] },
+      { name: 'Burpee', sets: '3', reps: '8-12', rest: '60s', notes: ['Movimento explosivo'] },
+      { name: 'Mountain Climbers', sets: '3', reps: '30s', rest: '45s', notes: ['Alta intensidade'] }
+    ];
+
+    return [{
+      id: 'day-1',
+      title: 'Dia 1: Treino Completo',
+      intensity,
+      duration: '45 minutos',
+      warmup: [
+        'Mobilidade articular - 5 minutos',
+        'Alongamento dinâmico - 5 minutos'
+      ],
+      exercises: staticExercises,
+      cooldown: [
+        'Alongamento estático - 5 minutos',
+        'Respiração e relaxamento - 3 minutos'
+      ],
+      tips: [
+        'Mantenha-se hidratado durante o treino',
+        'Foque na execução correta dos movimentos',
+        'Ajuste as cargas conforme necessário'
+      ]
+    }];
   };
 
-  // Se o usuário escolheu não ter treino, mostra mensagem
+  const handleRetry = () => {
+    setError(null);
+    const generatePlan = async () => {
+      try {
+        setLoading(true);
+        const plan = await fetchAndGenerateWorkout();
+        setWorkoutPlan(plan);
+      } catch (error) {
+        console.error('Retry error:', error);
+        setError('Erro ao gerar plano de treino');
+        const fallbackPlan = generateFallbackPlan();
+        setWorkoutPlan(fallbackPlan);
+      } finally {
+        setLoading(false);
+      }
+    };
+    generatePlan();
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white p-8 rounded-lg shadow-sm">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a1b9a]"></div>
+          <h3 className="text-xl font-semibold text-gray-700">Gerando seu plano de treino...</h3>
+          <p className="text-gray-600 text-center">
+            Estamos buscando os melhores exercícios para seus objetivos
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white p-8 rounded-lg shadow-sm text-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="text-red-500">
+            <Dumbbell className="h-12 w-12" />
+          </div>
+          <h3 className="text-xl font-semibold text-gray-700">Erro ao Carregar Treinos</h3>
+          <p className="text-red-600 max-w-md">{error}</p>
+          <button
+            onClick={handleRetry}
+            className="px-6 py-3 bg-[#6a1b9a] text-white rounded-lg hover:bg-[#5c1786] transition-colors"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // If user chose not to include training
   if (userRegistration.training_preference === 'Não') {
     return (
       <div className="bg-white p-8 rounded-lg shadow-sm text-center">
@@ -378,35 +355,8 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     );
   }
 
-  if (loading) {
-    return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-600"></div>
-          <span className="ml-3 text-gray-600">Gerando seu plano de treino personalizado...</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex flex-col items-center justify-center py-8 space-y-4">
-          <p className="text-red-600 text-center">{error}</p>
-          <button
-            onClick={fetchAndGenerateWorkout}
-            className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-          >
-            <span>Tentar Novamente</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={`space-y-${isPrintMode ? '4' : '6'}`}>
+    <div className="space-y-6">
       {/* Metrics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricsCard
@@ -457,7 +407,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
                 </div>
                 <div className="text-left">
                   <h3 className="font-semibold text-[#6a1b9a]">{day.title}</h3>
-                  <p className="text-sm text-purple-600">{day.duration} • {day.intensity}</p>
+                  <p className="text-sm text-purple-600">{day.duration}</p>
                 </div>
               </div>
               {!isPrintMode && (
@@ -474,14 +424,11 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
                 <div className="p-6 bg-gradient-to-br from-purple-50 via-white to-purple-50">
                   {/* Warmup Section */}
                   <div className="warmup-section mb-6">
-                    <h4 className="font-medium text-[#6a1b9a] mb-3 flex items-center">
-                      <Flame className="h-4 w-4 mr-2" />
-                      Aquecimento
-                    </h4>
+                    <h4 className="font-medium text-[#6a1b9a] mb-3">Aquecimento</h4>
                     <ul className="space-y-2">
                       {day.warmup.map((item, idx) => (
                         <li key={idx} className="text-sm text-gray-600 flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                          <Flame className="h-4 w-4 text-orange-500" />
                           <span>{item}</span>
                         </li>
                       ))}
@@ -490,10 +437,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
 
                   {/* Exercises Section */}
                   <div className="exercises-section mb-6">
-                    <h4 className="font-medium text-[#6a1b9a] mb-3 flex items-center">
-                      <Dumbbell className="h-4 w-4 mr-2" />
-                      Exercícios
-                    </h4>
+                    <h4 className="font-medium text-[#6a1b9a] mb-3">Exercícios</h4>
                     <div className="grid gap-4">
                       {day.exercises.map((exercise, idx) => (
                         <div
@@ -501,36 +445,29 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
                           className="bg-white p-4 rounded-lg shadow-sm border border-purple-100"
                         >
                           <div className="flex justify-between items-start mb-2">
-                            <div>
-                              <h5 className="font-medium text-gray-800">{exercise.name}</h5>
-                              <p className="text-xs text-gray-500 mt-1">
-                                {exercise.muscleGroup} • {exercise.equipment}
-                              </p>
-                            </div>
-                            <div className="text-sm text-right">
-                              <div className="flex items-center space-x-2">
-                                <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
-                                  {exercise.sets} séries
-                                </span>
-                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
-                                  {exercise.reps} reps
-                                </span>
-                              </div>
-                              <div className="text-xs text-gray-500 mt-1">
-                                Descanso: {exercise.rest}
-                              </div>
+                            <h5 className="font-medium text-gray-800">{exercise.name}</h5>
+                            <div className="text-sm">
+                              <span className="text-purple-600">{exercise.sets}</span>
+                              <span className="text-gray-400"> × </span>
+                              <span className="text-purple-600">{exercise.reps}</span>
                             </div>
                           </div>
-                          {exercise.notes.length > 0 && (
-                            <ul className="text-sm text-gray-600 space-y-1 mt-3">
-                              {exercise.notes.map((note, noteIdx) => (
-                                <li key={noteIdx} className="flex items-start space-x-2">
-                                  <div className="w-1 h-1 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
-                                  <span>{note}</span>
-                                </li>
-                              ))}
-                            </ul>
+                          <div className="text-sm text-gray-500 mb-2">
+                            Descanso: {exercise.rest}
+                          </div>
+                          {exercise.muscleGroup && (
+                            <div className="text-xs text-purple-600 mb-2">
+                              {exercise.muscleGroup} • {exercise.equipment}
+                            </div>
                           )}
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            {exercise.notes.map((note, noteIdx) => (
+                              <li key={noteIdx} className="flex items-center space-x-2">
+                                <div className="w-1 h-1 bg-purple-400 rounded-full"></div>
+                                <span>{note}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       ))}
                     </div>
@@ -538,14 +475,11 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
 
                   {/* Cooldown Section */}
                   <div className="cooldown-section mb-6">
-                    <h4 className="font-medium text-[#6a1b9a] mb-3 flex items-center">
-                      <Clock className="h-4 w-4 mr-2" />
-                      Finalização
-                    </h4>
+                    <h4 className="font-medium text-[#6a1b9a] mb-3">Finalização</h4>
                     <ul className="space-y-2">
                       {day.cooldown.map((item, idx) => (
                         <li key={idx} className="text-sm text-gray-600 flex items-center space-x-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <Clock className="h-4 w-4 text-blue-500" />
                           <span>{item}</span>
                         </li>
                       ))}
