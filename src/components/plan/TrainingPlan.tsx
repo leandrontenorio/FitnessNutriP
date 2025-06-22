@@ -101,7 +101,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
   // Buscar exercícios do Supabase
   const fetchExercisesFromDatabase = async (objective: string, intensity: string, isGym: boolean) => {
     try {
-      console.log('🔍 Buscando exercícios:', { objetivo: objective, nivel: intensity, academia: isGym });
+      console.log('🔍 Buscando exercícios:', { objetivo: objective, nivel: intensity });
 
       // Mapear intensidade para o banco
       const levelMap = {
