@@ -55,19 +55,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 1. Mapeamento de nível de atividade para intensidade
-  const getIntensityLevel = (activityLevel: string): 'Iniciante' | 'Intermediário' | 'Avançado' => {
-    if (activityLevel?.includes('Sedentário') || activityLevel?.includes('Levemente ativo')) {
-      return 'Iniciante';
-    } else if (activityLevel?.includes('Moderadamente ativo')) {
-      return 'Intermediário';
-    } else if (activityLevel?.includes('Altamente ativo') || activityLevel?.includes('Extremamente ativo')) {
-      return 'Avançado';
-    }
-    return 'Iniciante'; // Default
-  };
-
-  // 2. Mapeamento do objetivo para tag de filtro
+  // Map user goals to database objectives
   const mapGoalToObjective = (goal: string): string => {
     const goalMap: { [key: string]: string } = {
       'emagrecer': 'emagrecimento',
@@ -79,73 +67,77 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     return goalMap[goal] || 'definicao';
   };
 
-  // 3. Parâmetros de volume baseados na intensidade
-  const getWorkoutParams = (intensity: 'Iniciante' | 'Intermediário' | 'Avançado') => {
-    const params = {
-      'Iniciante': { days: 3, exercisesPerDay: 4, duration: 35 },
-      'Intermediário': { days: 4, exercisesPerDay: 5, duration: 45 },
-      'Avançado': { days: 5, exercisesPerDay: 6, duration: 60 }
-    };
-    return params[intensity];
+  // Determine intensity level based on activity level
+  const getIntensityLevel = (activityLevel: string): 'Iniciante' | 'Intermediário' | 'Avançado' => {
+    if (activityLevel?.includes('Sedentário') || activityLevel?.includes('Levemente ativo')) {
+      return 'Iniciante';
+    } else if (activityLevel?.includes('Moderadamente ativo')) {
+      return 'Intermediário';
+    } else {
+      return 'Avançado';
+    }
   };
 
-  // 4. Organização dos treinos por grupo muscular
-  const getDayFocuses = () => [
-    'Peito e Tríceps',
-    'Costas e Bíceps', 
-    'Pernas e Glúteos',
-    'Ombros e Abdômen',
-    'Corpo Inteiro'
-  ];
-
-  // Buscar exercícios do Supabase
-  const fetchExercisesFromDatabase = async (objective: string, intensity: string, isGym: boolean) => {
+  // Fetch exercises from Supabase and generate workout
+  const fetchAndGenerateWorkout = async () => {
     try {
-      console.log('🔍 Buscando exercícios:', { objetivo: objective, nivel: intensity });
+      setLoading(true);
+      setError(null);
 
-      // Mapear intensidade para o banco
+      const objective = mapGoalToObjective(userRegistration.goal);
+      const intensity = getIntensityLevel(userRegistration.activity_level || '');
+      const isGym = userRegistration.training_preference?.includes('academia') || false;
+
+      // Map intensity to database level
       const levelMap = {
         'Iniciante': 'iniciante',
         'Intermediário': 'intermediario',
         'Avançado': 'avancado'
       };
-      const dbLevel = levelMap[intensity as keyof typeof levelMap];
+      const dbLevel = levelMap[intensity];
 
-      // Primeira tentativa: buscar com objetivo específico
+      console.log('🏋️ Buscando exercícios:', { 
+        objetivo: objective, 
+        nivel: dbLevel, 
+        academia: isGym,
+        preferencia: userRegistration.training_preference 
+      });
+
+      // First, try to get exercises with objective filter
       let query = supabase
         .from('exercises')
         .select('*')
         .eq('nivel', dbLevel)
-        .ilike('objetivos', `%${objective}%`)
-        .limit(50);
+        .ilike('objective', `%${objective}%`)
+        .limit(30);
 
-      // 3. Filtro por equipamento
+      // Add equipment filter based on training preference
       if (isGym) {
-        // Academia: todos exceto peso corporal exclusivo
+        // For gym: exclude only bodyweight exercises
         query = query.neq('equipamento', 'Peso Corporal');
       } else {
-        // Casa: apenas peso corporal e halteres
+        // For home: only bodyweight and basic equipment
         query = query.in('equipamento', ['Peso Corporal', 'Halteres']);
       }
 
-      const { data: exercises, error } = await query;
+      const { data: exercises, error: fetchError } = await query;
 
-      if (error) {
-        console.error('❌ Erro na consulta:', error);
-        throw new Error(`Erro ao buscar exercícios: ${error.message}`);
+      if (fetchError) {
+        console.error('❌ Erro na consulta Supabase:', fetchError);
+        throw new Error(`Erro ao buscar exercícios: ${fetchError.message}`);
       }
 
       console.log(`✅ Encontrados ${exercises?.length || 0} exercícios específicos`);
 
-      // Se poucos exercícios, buscar sem filtro de objetivo
-      if (!exercises || exercises.length < 15) {
-        console.log('🔄 Buscando exercícios sem filtro de objetivo...');
+      // If no exercises found with objective filter, try without it
+      if (!exercises || exercises.length < 10) {
+        console.log('🔄 Poucos exercícios encontrados, buscando sem filtro de objetivo...');
         
         let fallbackQuery = supabase
           .from('exercises')
           .select('*')
           .eq('nivel', dbLevel)
-          .limit(50);
+          .limit(30);
 
         if (isGym) {
           fallbackQuery = fallbackQuery.neq('equipamento', 'Peso Corporal');
@@ -160,154 +152,173 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
         }
 
         if (!fallbackExercises || fallbackExercises.length === 0) {
-          throw new Error('Nenhum exercício encontrado no banco de dados');
+          console.log('⚠️ Nenhum exercício encontrado, usando plano estático');
+          return generateFallbackPlan();
         }
 
         console.log(`✅ Encontrados ${fallbackExercises.length} exercícios alternativos`);
-        return fallbackExercises;
+        return generateWorkoutPlan(fallbackExercises, intensity);
       }
 
-      return exercises;
+      return generateWorkoutPlan(exercises, intensity);
+
     } catch (error) {
-      console.error('❌ Erro ao buscar exercícios:', error);
+      console.error('❌ Erro em fetchAndGenerateWorkout:', error);
+      setError(error instanceof Error ? error.message : 'Erro ao carregar exercícios do banco de dados');
       throw error;
     }
   };
 
-  // Gerar plano de treino inteligente
-  const generateIntelligentWorkoutPlan = (exercises: any[], intensity: 'Iniciante' | 'Intermediário' | 'Avançado'): WorkoutDay[] => {
-    console.log(`🎯 Gerando plano inteligente com ${exercises.length} exercícios`);
+  // Generate workout plan from exercises
+  const generateWorkoutPlan = (exercises: any[], intensity: 'Iniciante' | 'Intermediário' | 'Avançado'): WorkoutDay[] => {
+  console.log(`🎯 Gerando plano de treino com ${exercises.length} exercícios`);
 
-    const params = getWorkoutParams(intensity);
-    const dayFocuses = getDayFocuses();
-    const workoutDays: WorkoutDay[] = [];
+  const shuffledExercises = shuffleArray(exercises);
 
-    // Organizar exercícios por grupo muscular
-    const exercisesByGroup: { [key: string]: any[] } = {};
-    exercises.forEach(ex => {
-      const group = ex.grupo_muscular || 'Geral';
-      if (!exercisesByGroup[group]) {
-        exercisesByGroup[group] = [];
-      }
-      exercisesByGroup[group].push(ex);
-    });
-
-    // Embaralhar exercícios dentro de cada grupo
-    Object.keys(exercisesByGroup).forEach(group => {
-      exercisesByGroup[group] = shuffleArray(exercisesByGroup[group]);
-    });
-
-    console.log('📊 Exercícios por grupo:', Object.keys(exercisesByGroup).map(group => 
-      `${group}: ${exercisesByGroup[group].length}`
-    ).join(', '));
-
-    // Função para pegar exercícios sem repetir
-    const usedExercises = new Set<number>();
-    const getExercisesFromGroup = (groups: string[], count: number): any[] => {
-      const selected: any[] = [];
-      
-      for (const group of groups) {
-        const available = (exercisesByGroup[group] || []).filter(ex => !usedExercises.has(ex.id));
-        const needed = Math.min(count - selected.length, available.length);
-        
-        for (let i = 0; i < needed; i++) {
-          selected.push(available[i]);
-          usedExercises.add(available[i].id);
-        }
-        
-        if (selected.length >= count) break;
-      }
-      
-      return selected;
-    };
-
-    // Gerar cada dia de treino
-    for (let i = 0; i < params.days; i++) {
-      const dayFocus = dayFocuses[i] || 'Treino Geral';
-      let dayExercises: any[] = [];
-
-      // 4. Organização por grupo muscular conforme especificação
-      if (dayFocus.includes('Peito')) {
-        // Dia 1: Peito e Tríceps
-        dayExercises = [
-          ...getExercisesFromGroup(['Peito'], 2),
-          ...getExercisesFromGroup(['Braços'], 2) // Tríceps está em Braços
-        ];
-      } else if (dayFocus.includes('Costas')) {
-        // Dia 2: Costas e Bíceps
-        dayExercises = [
-          ...getExercisesFromGroup(['Costas'], 2),
-          ...getExercisesFromGroup(['Braços'], 2) // Bíceps está em Braços
-        ];
-      } else if (dayFocus.includes('Pernas')) {
-        // Dia 3: Pernas e Glúteos
-        dayExercises = [
-          ...getExercisesFromGroup(['Pernas'], 3),
-          ...getExercisesFromGroup(['Abdômen'], 1) // Complemento
-        ];
-      } else if (dayFocus.includes('Ombros')) {
-        // Dia 4: Ombros e Abdômen (apenas Intermediário e Avançado)
-        dayExercises = [
-          ...getExercisesFromGroup(['Ombros'], 2),
-          ...getExercisesFromGroup(['Abdômen'], 2)
-        ];
-      } else {
-        // Dia 5: Corpo inteiro / funcional (apenas Avançado)
-        const allGroups = Object.keys(exercisesByGroup);
-        dayExercises = getExercisesFromGroup(allGroups, params.exercisesPerDay);
-      }
-
-      // Completar com exercícios restantes se necessário
-      if (dayExercises.length < params.exercisesPerDay) {
-        const allGroups = Object.keys(exercisesByGroup);
-        const remaining = getExercisesFromGroup(allGroups, params.exercisesPerDay - dayExercises.length);
-        dayExercises.push(...remaining);
-      }
-
-      // 5. Estrutura diária do treino
-      const formattedExercises: Exercise[] = dayExercises.slice(0, params.exercisesPerDay).map(ex => ({
-        name: ex.nome || 'Exercício',
-        sets: ex.series?.toString() || '3',
-        reps: ex.repeticoes || '10-12',
-        rest: ex.descanso || '60s',
-        notes: ex.observacoes ? [ex.observacoes] : ['Execute com boa forma'],
-        muscleGroup: ex.grupo_muscular || '',
-        equipment: ex.equipamento || ''
-      }));
-
-      workoutDays.push({
-        id: `day-${i + 1}`,
-        title: `Dia ${i + 1}: ${dayFocus}`,
-        intensity,
-        duration: `${params.duration} minutos`,
-        warmup: [
-          'Mobilidade articular - 5 minutos',
-          'Alongamento dinâmico - 5 minutos',
-          'Aquecimento específico - 5 minutos'
-        ],
-        exercises: formattedExercises,
-        cooldown: [
-          'Alongamento estático - 5 minutos',
-          'Respiração e relaxamento - 3 minutos'
-        ],
-        tips: [
-          'Hidrate-se durante o treino',
-          'Priorize boa execução dos movimentos',
-          'Ajuste a carga conforme necessário',
-          'Respeite os tempos de descanso'
-        ]
-      });
-    }
-
-    console.log(`✅ Plano inteligente gerado com ${workoutDays.length} dias de treino`);
-    return workoutDays;
+  const workoutParams = {
+    'Iniciante': { days: 3, exercisesPerDay: 4, duration: 35 },
+    'Intermediário': { days: 4, exercisesPerDay: 5, duration: 45 },
+    'Avançado': { days: 5, exercisesPerDay: 6, duration: 60 }
   };
 
-  // Plano de fallback estático
+  const params = workoutParams[intensity];
+  const workoutDays: WorkoutDay[] = [];
+
+  const dayFocuses = [
+    'Peito e Tríceps',
+    'Costas e Bíceps', 
+    'Pernas e Glúteos',
+    'Ombros e Abdômen',
+    'Full Body'
+  ];
+
+  // Organiza exercícios por grupo muscular (mutável)
+  const availableExercisesByGroup: { [key: string]: any[] } = {};
+  shuffledExercises.forEach(ex => {
+    const group = ex.grupo_muscular || 'Geral';
+    if (!availableExercisesByGroup[group]) {
+      availableExercisesByGroup[group] = [];
+    }
+    availableExercisesByGroup[group].push(ex);
+  });
+
+  const takeExercises = (group: string, count: number): any[] => {
+    const list = availableExercisesByGroup[group] || [];
+    return list.splice(0, count); // remove usados
+  };
+
+  for (let i = 0; i < params.days; i++) {
+    let dayExercises: any[] = [];
+    const dayFocus = dayFocuses[i] || 'Treino Geral';
+
+    if (dayFocus.includes('Peito')) {
+      dayExercises = [
+        ...takeExercises('Peito', 2),
+        ...takeExercises('Tríceps', 2)
+      ];
+    } else if (dayFocus.includes('Costas')) {
+      dayExercises = [
+        ...takeExercises('Costas', 2),
+        ...takeExercises('Bíceps', 2)
+      ];
+    } else if (dayFocus.includes('Pernas')) {
+      dayExercises = [
+        ...takeExercises('Pernas', 3),
+        ...takeExercises('Glúteos', 1)
+      ];
+    } else if (dayFocus.includes('Ombros')) {
+      dayExercises = [
+        ...takeExercises('Ombros', 2),
+        ...takeExercises('Abdômen', 2)
+      ];
+    } else {
+      const allGroups = Object.keys(availableExercisesByGroup);
+      for (const group of allGroups) {
+        if (dayExercises.length < params.exercisesPerDay) {
+          dayExercises.push(...takeExercises(group, 1));
+        }
+      }
+    }
+
+    // Fallback: completa com qualquer exercício restante
+    const usedIds = new Set(dayExercises.map(ex => ex.id));
+    const remaining = shuffledExercises.filter(ex => !usedIds.has(ex.id));
+    dayExercises.push(...remaining.slice(0, params.exercisesPerDay - dayExercises.length));
+
+    const formattedExercises: Exercise[] = dayExercises.slice(0, params.exercisesPerDay).map(ex => ({
+      name: ex.nome || 'Exercício',
+      sets: ex.series?.toString() || '3',
+      reps: ex.repeticoes || '10-12',
+      rest: ex.descanso || '60s',
+      notes: ex.observacoes ? [ex.observacoes] : ['Execute com boa forma'],
+      muscleGroup: ex.grupo_muscular || '',
+      equipment: ex.equipamento || ''
+    }));
+
+    workoutDays.push({
+      id: `day-${i + 1}`,
+      title: `Dia ${i + 1}: ${dayFocus}`,
+      intensity,
+      duration: `${params.duration} minutos`,
+      warmup: [
+        'Mobilidade articular - 5 minutos',
+        'Alongamento dinâmico - 5 minutos',
+        'Aquecimento específico - 5 minutos'
+      ],
+      exercises: formattedExercises,
+      cooldown: [
+        'Alongamento estático - 5 minutos',
+        'Respiração e relaxamento - 3 minutos'
+      ],
+      tips: [
+        'Mantenha-se hidratado durante o treino',
+        'Foque na execução correta dos movimentos',
+        'Ajuste as cargas conforme necessário',
+        'Respeite os tempos de descanso'
+      ]
+    });
+  }
+
+  console.log(`✅ Plano gerado com ${workoutDays.length} dias e variação de grupos musculares`);
+  return workoutDays;
+};
+
+  useEffect(() => {
+    const generatePlan = async () => {
+      // If user chose not to include training
+      if (userRegistration.training_preference === 'Não') {
+        console.log('ℹ️ Usuário optou por não incluir treinos');
+        setWorkoutPlan([]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        console.log('🚀 Iniciando geração do plano de treino...');
+        const plan = await fetchAndGenerateWorkout();
+        setWorkoutPlan(plan);
+        console.log('✅ Plano de treino gerado com sucesso!');
+      } catch (error) {
+        console.error('❌ Erro ao gerar plano de treino:', error);
+        setError('Erro ao gerar plano de treino');
+        
+        // Generate fallback plan with static exercises
+        console.log('🔄 Gerando plano de fallback...');
+        const fallbackPlan = generateFallbackPlan();
+        setWorkoutPlan(fallbackPlan);
+        console.log('✅ Plano de fallback gerado');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    generatePlan();
+  }, [userRegistration]);
+
+  // Generate fallback plan with static exercises
   const generateFallbackPlan = (): WorkoutDay[] => {
     const intensity = getIntensityLevel(userRegistration.activity_level || '');
     const isGym = userRegistration.training_preference?.includes('academia') || false;
-    const params = getWorkoutParams(intensity);
 
     console.log(`🏗️ Gerando plano estático - Intensidade: ${intensity}, Academia: ${isGym}`);
 
@@ -331,12 +342,12 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
       id: 'day-1',
       title: 'Dia 1: Treino Completo',
       intensity,
-      duration: `${params.duration} minutos`,
+      duration: '45 minutos',
       warmup: [
         'Mobilidade articular - 5 minutos',
         'Alongamento dinâmico - 5 minutos'
       ],
-      exercises: staticExercises.slice(0, params.exercisesPerDay),
+      exercises: staticExercises,
       cooldown: [
         'Alongamento estático - 5 minutos',
         'Respiração e relaxamento - 3 minutos'
@@ -349,59 +360,24 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     }];
   };
 
-  // Gerar plano principal
-  const generateWorkoutPlan = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Se usuário não quer treinar
-      if (userRegistration.training_preference === 'Não') {
-        console.log('ℹ️ Usuário optou por não incluir treinos');
-        setWorkoutPlan([]);
-        return;
-      }
-
-      const intensity = getIntensityLevel(userRegistration.activity_level || '');
-      const objective = mapGoalToObjective(userRegistration.goal);
-      const isGym = userRegistration.training_preference?.includes('academia') || false;
-
-      console.log('🚀 Iniciando geração inteligente:', { 
-        intensidade: intensity, 
-        objetivo: objective, 
-        academia: isGym 
-      });
-
-      // Buscar exercícios do banco
-      const exercises = await fetchExercisesFromDatabase(objective, intensity, isGym);
-      
-      // Gerar plano inteligente
-      const plan = generateIntelligentWorkoutPlan(exercises, intensity);
-      setWorkoutPlan(plan);
-      
-      console.log('✅ Plano inteligente gerado com sucesso!');
-    } catch (error) {
-      console.error('❌ Erro ao gerar plano:', error);
-      setError('Erro ao gerar plano de treino');
-      
-      // Usar plano de fallback
-      console.log('🔄 Gerando plano de fallback...');
-      const fallbackPlan = generateFallbackPlan();
-      setWorkoutPlan(fallbackPlan);
-      console.log('✅ Plano de fallback gerado');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    generateWorkoutPlan();
-  }, [userRegistration]);
-
   const handleRetry = () => {
     console.log('🔄 Tentativa manual de regenerar plano...');
     setError(null);
-    generateWorkoutPlan();
+    const generatePlan = async () => {
+      try {
+        setLoading(true);
+        const plan = await fetchAndGenerateWorkout();
+        setWorkoutPlan(plan);
+      } catch (error) {
+        console.error('❌ Erro na tentativa manual:', error);
+        setError('Erro ao gerar plano de treino');
+        const fallbackPlan = generateFallbackPlan();
+        setWorkoutPlan(fallbackPlan);
+      } finally {
+        setLoading(false);
+      }
+    };
+    generatePlan();
   };
 
   if (loading) {
@@ -441,7 +417,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     );
   }
 
-  // Se usuário não quer treinar
+  // If user chose not to include training
   if (userRegistration.training_preference === 'Não') {
     return (
       <div className="bg-white p-8 rounded-lg shadow-sm text-center">
