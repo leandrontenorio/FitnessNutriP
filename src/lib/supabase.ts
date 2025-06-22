@@ -29,10 +29,10 @@ const validateConfig = () => {
 
 validateConfig();
 
-// Enhanced fetch function with better error handling
+// Enhanced fetch function with better error handling and CORS detection
 const enhancedFetch = async (url: string, options: RequestInit = {}) => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout to 15 seconds
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
   
   try {
     const response = await fetch(url, {
@@ -54,6 +54,11 @@ const enhancedFetch = async (url: string, options: RequestInit = {}) => {
         // Check if we're online
         if (!navigator.onLine) {
           throw new Error('No internet connection detected. Please check your network connection and try again.');
+        }
+        
+        // Check if this might be a CORS issue
+        if (url.includes('supabase.co')) {
+          throw new Error('Unable to connect to Supabase. This could be due to:\n• CORS configuration - add your domain to Supabase CORS settings\n• Network connectivity issues\n• Firewall or antivirus blocking the connection\n• VPN/proxy interference\n\nPlease check your Supabase project settings and network connection.');
         }
         
         // More specific error message for fetch failures
@@ -96,8 +101,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Enhanced connection check with better error reporting
-export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
+// Enhanced connection check with better error reporting and graceful degradation
+export const checkSupabaseConnection = async (retries = 2, delay = 1500) => {
   // First check if we're online
   if (!navigator.onLine) {
     console.warn('Device is offline');
@@ -109,7 +114,7 @@ export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
       console.log(`Connection attempt ${i + 1} of ${retries}...`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // Reduced timeout
       
       const { data, error } = await supabase
         .from('profiles')
@@ -144,7 +149,9 @@ export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
             if (i === retries - 1) {
               const errorMsg = error.message || 'Unknown database error';
               console.error('Database connection failed:', errorMsg);
-              toast.error(`Erro de conexão: ${errorMsg}`);
+              
+              // Don't show toast for connection errors - let the app handle graceful degradation
+              console.warn('Connection failed, but continuing with offline mode');
               return false;
             }
         }
@@ -167,27 +174,38 @@ export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
         if (error.name === 'AbortError') {
           console.error('Connection timeout');
           if (i === retries - 1) {
-            toast.error('Tempo limite de conexão excedido. Verifique sua conexão com a internet.');
+            console.warn('Connection timeout, but continuing with offline mode');
+            return false;
           }
         } else if (error.message.includes('No internet connection')) {
           console.error('No internet connection');
           if (i === retries - 1) {
-            toast.error('Sem conexão com a internet. Verifique sua rede e tente novamente.');
+            toast.error('Sem conexão com a internet. Algumas funcionalidades podem estar limitadas.');
+            return false;
+          }
+        } else if (error.message.includes('Unable to connect to Supabase')) {
+          console.error('Supabase connection failed - likely CORS issue');
+          if (i === retries - 1) {
+            toast.error('Erro de conexão com o servidor. Verifique as configurações de CORS no Supabase.');
+            return false;
           }
         } else if (error.message.includes('Unable to connect to the server')) {
           console.error('Server connection failed');
           if (i === retries - 1) {
-            toast.error('Não foi possível conectar ao servidor. Verifique sua conexão, firewall ou VPN.');
+            console.warn('Server connection failed, but continuing with offline mode');
+            return false;
           }
         } else if (error.message.includes('Network error')) {
           console.error('Network error');
           if (i === retries - 1) {
-            toast.error('Erro de rede. Verifique sua conexão e configurações de firewall.');
+            console.warn('Network error, but continuing with offline mode');
+            return false;
           }
         } else {
           console.error('Unknown connection error:', error.message);
           if (i === retries - 1) {
-            toast.error('Erro de conexão desconhecido. Tente novamente ou contate o suporte.');
+            console.warn('Unknown connection error, but continuing with offline mode');
+            return false;
           }
         }
       }
@@ -208,8 +226,8 @@ export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
 // Wrapper para queries com retry automático e backoff exponencial
 export const safeQuery = async <T>(
   queryFn: () => Promise<{ data: T | null; error: any }>,
-  retries = 3,
-  initialDelay = 2000
+  retries = 2,
+  initialDelay = 1000
 ): Promise<{ data: T | null; error: any }> => {
   for (let i = 0; i < retries; i++) {
     try {
@@ -251,7 +269,7 @@ export const safeQuery = async <T>(
   return { data: null, error: new Error('Max retries reached') };
 };
 
-// Enhanced connection status check
+// Enhanced connection status check with graceful degradation
 export const getConnectionStatus = async () => {
   // Check if device is online first
   if (!navigator.onLine) {
@@ -263,7 +281,7 @@ export const getConnectionStatus = async () => {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // Reduced timeout
     
     const { data, error } = await supabase
       .from('profiles')
@@ -285,13 +303,13 @@ export const getConnectionStatus = async () => {
       if (error.message?.includes('Failed to fetch') || error.message?.includes('Network error')) {
         return {
           isConnected: false,
-          error: 'Erro de conexão com a internet. Verifique sua conexão, firewall ou VPN.'
+          error: 'Erro de conexão com a internet. Algumas funcionalidades podem estar limitadas.'
         };
       }
       
       return {
         isConnected: false,
-        error: error.message || 'Erro desconhecido ao conectar com Supabase'
+        error: error.message || 'Erro ao conectar com Supabase'
       };
     }
     
@@ -304,19 +322,25 @@ export const getConnectionStatus = async () => {
       if (error.name === 'AbortError') {
         return {
           isConnected: false,
-          error: 'Tempo limite de conexão excedido. Verifique sua conexão.'
+          error: 'Tempo limite de conexão excedido.'
         };
       }
       if (error.message.includes('No internet connection')) {
         return {
           isConnected: false,
-          error: 'Sem conexão com a internet. Verifique sua rede.'
+          error: 'Sem conexão com a internet.'
+        };
+      }
+      if (error.message.includes('Unable to connect to Supabase')) {
+        return {
+          isConnected: false,
+          error: 'Erro de conexão - verifique as configurações de CORS no Supabase.'
         };
       }
       if (error.message.includes('Unable to connect to the server')) {
         return {
           isConnected: false,
-          error: 'Não foi possível conectar ao servidor. Verifique firewall, VPN ou proxy.'
+          error: 'Não foi possível conectar ao servidor.'
         };
       }
       return {
@@ -329,4 +353,21 @@ export const getConnectionStatus = async () => {
       error: 'Erro desconhecido'
     };
   }
+};
+
+// Helper function to check if the app should work in offline mode
+export const shouldWorkOffline = () => {
+  return !navigator.onLine || localStorage.getItem('supabase_offline_mode') === 'true';
+};
+
+// Helper function to enable offline mode
+export const enableOfflineMode = () => {
+  localStorage.setItem('supabase_offline_mode', 'true');
+  console.log('Offline mode enabled');
+};
+
+// Helper function to disable offline mode
+export const disableOfflineMode = () => {
+  localStorage.removeItem('supabase_offline_mode');
+  console.log('Offline mode disabled');
 };
