@@ -80,94 +80,90 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
 
   // Fetch exercises from Supabase and generate workout
   const fetchAndGenerateWorkout = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  try {
+    setLoading(true);
+    setError(null);
 
-      const objective = mapGoalToObjective(userRegistration.goal);
-      const intensity = getIntensityLevel(userRegistration.activity_level || '');
-      const isGym = userRegistration.training_preference?.includes('academia') || false;
+    const objective = mapGoalToObjective(userRegistration.goal);
+    const intensity = getIntensityLevel(userRegistration.activity_level || '');
+    const isGym = userRegistration.training_preference?.includes('academia') || false;
 
-      // Map intensity to database level
-      const levelMap = {
-        'Iniciante': 'iniciante',
-        'Intermediário': 'intermediario',
-        'Avançado': 'avancado'
-      };
-      const dbLevel = levelMap[intensity];
+    // Map intensity to database level
+    const levelMap = {
+      'Iniciante': 'iniciante',
+      'Intermediário': 'intermediario',
+      'Avançado': 'avancado'
+    };
+    const dbLevel = levelMap[intensity];
 
-      console.log('🏋️ Buscando exercícios:', { 
-        objetivo: objective, 
-        nivel: dbLevel, 
-        academia: isGym,
-        preferencia: userRegistration.training_preference 
-      });
+    console.log('🏋️ Buscando exercícios:', { 
+      objetivo: objective, 
+      nivel: dbLevel, 
+      academia: isGym,
+      preferencia: userRegistration.training_preference 
+    });
 
-      // First, try to get exercises with objective filter
-      let query = supabase
+    // Monta a query principal
+    let query = supabase
+      .from('exercises')
+      .select('*')
+      .eq('nivel', dbLevel)
+      .ilike('objective', `%${objective}%`)
+      .limit(50);
+
+    // Filtra por tipo de equipamento, se a coluna existir
+    if (isGym) {
+      query = query.neq('equipamento', 'Peso Corporal');
+    } else {
+      query = query.in('equipamento', ['Peso Corporal', 'Halteres']);
+    }
+
+    const { data: exercises, error: fetchError } = await query;
+
+    if (fetchError) {
+      console.error('❌ Erro na consulta Supabase:', fetchError);
+      throw new Error(`Erro ao buscar exercícios: ${fetchError.message}`);
+    }
+
+    if (!exercises || exercises.length < 10) {
+      console.warn('⚠️ Poucos exercícios encontrados, tentando consulta alternativa...');
+
+      let fallbackQuery = supabase
         .from('exercises')
         .select('*')
         .eq('nivel', dbLevel)
-        .ilike('objective', `%${objective}%`)
-        .limit(30);
+        .limit(50);
 
-      // Add equipment filter based on training preference
       if (isGym) {
-        // For gym: exclude only bodyweight exercises
-        query = query.neq('equipamento', 'Peso Corporal');
+        fallbackQuery = fallbackQuery.neq('equipamento', 'Peso Corporal');
       } else {
-        // For home: only bodyweight and basic equipment
-        query = query.in('equipamento', ['Peso Corporal', 'Halteres']);
+        fallbackQuery = fallbackQuery.in('equipamento', ['Peso Corporal', 'Halteres']);
       }
 
-      const { data: exercises, error: fetchError } = await query;
+      const { data: fallbackExercises, error: fallbackError } = await fallbackQuery;
 
-      if (fetchError) {
-        console.error('❌ Erro na consulta Supabase:', fetchError);
-        throw new Error(`Erro ao buscar exercícios: ${fetchError.message}`);
+      if (fallbackError) {
+        throw new Error(`Erro ao buscar exercícios alternativos: ${fallbackError.message}`);
       }
 
-      console.log(`✅ Encontrados ${exercises?.length || 0} exercícios específicos`);
-
-      // If no exercises found with objective filter, try without it
-      if (!exercises || exercises.length < 10) {
-        console.log('🔄 Poucos exercícios encontrados, buscando sem filtro de objetivo...');
-        
-        let fallbackQuery = supabase
-          .from('exercises')
-          .select('*')
-          .eq('nivel', dbLevel)
-          .limit(30);
-
-        if (isGym) {
-          fallbackQuery = fallbackQuery.neq('equipamento', 'Peso Corporal');
-        } else {
-          fallbackQuery = fallbackQuery.in('equipamento', ['Peso Corporal', 'Halteres']);
-        }
-
-        const { data: fallbackExercises, error: fallbackError } = await fallbackQuery;
-
-        if (fallbackError) {
-          throw new Error(`Erro ao buscar exercícios alternativos: ${fallbackError.message}`);
-        }
-
-        if (!fallbackExercises || fallbackExercises.length === 0) {
-          console.log('⚠️ Nenhum exercício encontrado, usando plano estático');
-          return generateFallbackPlan();
-        }
-
-        console.log(`✅ Encontrados ${fallbackExercises.length} exercícios alternativos`);
-        return generateWorkoutPlan(fallbackExercises, intensity);
+      if (!fallbackExercises || fallbackExercises.length === 0) {
+        console.log('⚠️ Nenhum exercício encontrado, usando plano estático');
+        return generateFallbackPlan();
       }
 
-      return generateWorkoutPlan(exercises, intensity);
-
-    } catch (error) {
-      console.error('❌ Erro em fetchAndGenerateWorkout:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao carregar exercícios do banco de dados');
-      throw error;
+      return generateWorkoutPlan(fallbackExercises, intensity);
     }
-  };
+
+    return generateWorkoutPlan(exercises, intensity);
+
+  } catch (error) {
+    console.error('❌ Erro em fetchAndGenerateWorkout:', error);
+    setError(error instanceof Error ? error.message : 'Erro ao carregar exercícios do banco de dados');
+    throw error;
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Generate workout plan from exercises
   const generateWorkoutPlan = (exercises: any[], intensity: 'Iniciante' | 'Intermediário' | 'Avançado'): WorkoutDay[] => {
