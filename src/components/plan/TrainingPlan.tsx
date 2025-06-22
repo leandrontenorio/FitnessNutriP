@@ -171,130 +171,117 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
 
   // Generate workout plan from exercises
   const generateWorkoutPlan = (exercises: any[], intensity: 'Iniciante' | 'Intermediário' | 'Avançado'): WorkoutDay[] => {
-    console.log(`🎯 Gerando plano de treino com ${exercises.length} exercícios`);
-    
-    const shuffledExercises = shuffleArray(exercises);
-    
-    // Determine workout parameters based on intensity
-    const workoutParams = {
-      'Iniciante': { days: 3, exercisesPerDay: 4, duration: 35 },
-      'Intermediário': { days: 4, exercisesPerDay: 5, duration: 45 },
-      'Avançado': { days: 5, exercisesPerDay: 6, duration: 60 }
-    };
+  console.log(`🎯 Gerando plano de treino com ${exercises.length} exercícios`);
 
-    const params = workoutParams[intensity];
-    const workoutDays: WorkoutDay[] = [];
+  const shuffledExercises = shuffleArray(exercises);
 
-    // Define workout focuses for each day
-    const dayFocuses = [
-      'Peito e Tríceps',
-      'Costas e Bíceps', 
-      'Pernas e Glúteos',
-      'Ombros e Abdômen',
-      'Full Body',
-      'Cardio e Core'
-    ];
+  const workoutParams = {
+    'Iniciante': { days: 3, exercisesPerDay: 4, duration: 35 },
+    'Intermediário': { days: 4, exercisesPerDay: 5, duration: 45 },
+    'Avançado': { days: 5, exercisesPerDay: 6, duration: 60 }
+  };
 
-    // Group exercises by muscle group for better distribution
-    const exercisesByGroup: { [key: string]: any[] } = {};
-    shuffledExercises.forEach(ex => {
-      const group = ex.grupo_muscular || 'Geral';
-      if (!exercisesByGroup[group]) {
-        exercisesByGroup[group] = [];
-      }
-      exercisesByGroup[group].push(ex);
-    });
+  const params = workoutParams[intensity];
+  const workoutDays: WorkoutDay[] = [];
 
-    console.log('📊 Exercícios por grupo:', Object.keys(exercisesByGroup).map(group => 
-      `${group}: ${exercisesByGroup[group].length}`
-    ).join(', '));
+  const dayFocuses = [
+    'Peito e Tríceps',
+    'Costas e Bíceps', 
+    'Pernas e Glúteos',
+    'Ombros e Abdômen',
+    'Full Body'
+  ];
 
-    for (let i = 0; i < params.days; i++) {
-      // Try to get exercises from relevant muscle groups for each day
-      let dayExercises: any[] = [];
-      const dayFocus = dayFocuses[i] || 'Treino Geral';
-      
-      // Get exercises based on day focus
-      if (dayFocus.includes('Peito')) {
-        dayExercises = [
-          ...(exercisesByGroup['Peito'] || []).slice(0, 2),
-          ...(exercisesByGroup['Braços'] || []).slice(0, 2)
-        ];
-      } else if (dayFocus.includes('Costas')) {
-        dayExercises = [
-          ...(exercisesByGroup['Costas'] || []).slice(0, 2),
-          ...(exercisesByGroup['Braços'] || []).slice(0, 2)
-        ];
-      } else if (dayFocus.includes('Pernas')) {
-        dayExercises = [
-          ...(exercisesByGroup['Pernas'] || []).slice(0, 3),
-          ...(exercisesByGroup['Abdômen'] || []).slice(0, 1)
-        ];
-      } else if (dayFocus.includes('Ombros')) {
-        dayExercises = [
-          ...(exercisesByGroup['Ombros'] || []).slice(0, 2),
-          ...(exercisesByGroup['Abdômen'] || []).slice(0, 2)
-        ];
-      } else {
-        // Full body or mixed
-        const allGroups = Object.keys(exercisesByGroup);
-        allGroups.forEach(group => {
-          if (dayExercises.length < params.exercisesPerDay) {
-            dayExercises.push(...(exercisesByGroup[group] || []).slice(0, 1));
-          }
-        });
-      }
+  // Organiza exercícios por grupo muscular (mutável)
+  const availableExercisesByGroup: { [key: string]: any[] } = {};
+  shuffledExercises.forEach(ex => {
+    const group = ex.grupo_muscular || 'Geral';
+    if (!availableExercisesByGroup[group]) {
+      availableExercisesByGroup[group] = [];
+    }
+    availableExercisesByGroup[group].push(ex);
+  });
 
-      // Fill remaining slots with any available exercises
-      while (dayExercises.length < params.exercisesPerDay && shuffledExercises.length > 0) {
-        const remainingExercises = shuffledExercises.filter(ex => 
-          !dayExercises.some(dayEx => dayEx.id === ex.id)
-        );
-        if (remainingExercises.length > 0) {
-          dayExercises.push(remainingExercises[0]);
-        } else {
-          break;
+  const takeExercises = (group: string, count: number): any[] => {
+    const list = availableExercisesByGroup[group] || [];
+    return list.splice(0, count); // remove usados
+  };
+
+  for (let i = 0; i < params.days; i++) {
+    let dayExercises: any[] = [];
+    const dayFocus = dayFocuses[i] || 'Treino Geral';
+
+    if (dayFocus.includes('Peito')) {
+      dayExercises = [
+        ...takeExercises('Peito', 2),
+        ...takeExercises('Tríceps', 2)
+      ];
+    } else if (dayFocus.includes('Costas')) {
+      dayExercises = [
+        ...takeExercises('Costas', 2),
+        ...takeExercises('Bíceps', 2)
+      ];
+    } else if (dayFocus.includes('Pernas')) {
+      dayExercises = [
+        ...takeExercises('Pernas', 3),
+        ...takeExercises('Glúteos', 1)
+      ];
+    } else if (dayFocus.includes('Ombros')) {
+      dayExercises = [
+        ...takeExercises('Ombros', 2),
+        ...takeExercises('Abdômen', 2)
+      ];
+    } else {
+      const allGroups = Object.keys(availableExercisesByGroup);
+      for (const group of allGroups) {
+        if (dayExercises.length < params.exercisesPerDay) {
+          dayExercises.push(...takeExercises(group, 1));
         }
       }
-
-      // Convert to Exercise format
-      const formattedExercises = dayExercises.slice(0, params.exercisesPerDay).map(ex => ({
-        name: ex.nome || 'Exercício',
-        sets: ex.series?.toString() || '3',
-        reps: ex.repeticoes || '10-12',
-        rest: ex.descanso || '60s',
-        notes: ex.observacoes ? [ex.observacoes] : ['Execute com boa forma'],
-        muscleGroup: ex.grupo_muscular || '',
-        equipment: ex.equipamento || ''
-      }));
-
-      workoutDays.push({
-        id: `day-${i + 1}`,
-        title: `Dia ${i + 1}: ${dayFocus}`,
-        intensity,
-        duration: `${params.duration} minutos`,
-        warmup: [
-          'Mobilidade articular - 5 minutos',
-          'Alongamento dinâmico - 5 minutos',
-          'Aquecimento específico - 5 minutos'
-        ],
-        exercises: formattedExercises,
-        cooldown: [
-          'Alongamento estático - 5 minutos',
-          'Respiração e relaxamento - 3 minutos'
-        ],
-        tips: [
-          'Mantenha-se hidratado durante o treino',
-          'Foque na execução correta dos movimentos',
-          'Ajuste as cargas conforme necessário',
-          'Respeite os tempos de descanso'
-        ]
-      });
     }
 
-    console.log(`✅ Plano gerado com ${workoutDays.length} dias de treino`);
-    return workoutDays;
-  };
+    // Fallback: completa com qualquer exercício restante
+    const usedIds = new Set(dayExercises.map(ex => ex.id));
+    const remaining = shuffledExercises.filter(ex => !usedIds.has(ex.id));
+    dayExercises.push(...remaining.slice(0, params.exercisesPerDay - dayExercises.length));
+
+    const formattedExercises: Exercise[] = dayExercises.slice(0, params.exercisesPerDay).map(ex => ({
+      name: ex.nome || 'Exercício',
+      sets: ex.series?.toString() || '3',
+      reps: ex.repeticoes || '10-12',
+      rest: ex.descanso || '60s',
+      notes: ex.observacoes ? [ex.observacoes] : ['Execute com boa forma'],
+      muscleGroup: ex.grupo_muscular || '',
+      equipment: ex.equipamento || ''
+    }));
+
+    workoutDays.push({
+      id: `day-${i + 1}`,
+      title: `Dia ${i + 1}: ${dayFocus}`,
+      intensity,
+      duration: `${params.duration} minutos`,
+      warmup: [
+        'Mobilidade articular - 5 minutos',
+        'Alongamento dinâmico - 5 minutos',
+        'Aquecimento específico - 5 minutos'
+      ],
+      exercises: formattedExercises,
+      cooldown: [
+        'Alongamento estático - 5 minutos',
+        'Respiração e relaxamento - 3 minutos'
+      ],
+      tips: [
+        'Mantenha-se hidratado durante o treino',
+        'Foque na execução correta dos movimentos',
+        'Ajuste as cargas conforme necessário',
+        'Respeite os tempos de descanso'
+      ]
+    });
+  }
+
+  console.log(`✅ Plano gerado com ${workoutDays.length} dias e variação de grupos musculares`);
+  return workoutDays;
+};
 
   useEffect(() => {
     const generatePlan = async () => {
