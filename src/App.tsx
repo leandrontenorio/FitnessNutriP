@@ -28,7 +28,7 @@ function App() {
         
         if (!isConnected) {
           setConnectionError(true);
-          toast.error('Erro de conexão com o servidor. Por favor, conecte ao Supabase primeiro.');
+          toast.error('Erro de conexão com o servidor. Verifique sua conexão com a internet.');
           setLoading(false);
           return;
         }
@@ -42,7 +42,7 @@ function App() {
       } catch (error) {
         console.error('Initialization error:', error);
         setConnectionError(true);
-        toast.error('Erro ao inicializar aplicação. Por favor, conecte ao Supabase primeiro.');
+        toast.error('Erro ao inicializar aplicação. Verifique sua conexão com a internet.');
       } finally {
         setLoading(false);
       }
@@ -115,11 +115,12 @@ function App() {
       <div className="min-h-screen bg-gradient-to-b from-[#f0fdf4] to-[#dcfce7] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold text-emerald-700 mb-4">
-            Conexão não estabelecida
+            Erro de Conexão
           </h2>
           <p className="text-gray-600 mb-6">
-            Por favor, conecte ao Supabase primeiro clicando no botão "Connect to Supabase" 
-            no canto superior direito da tela.
+            Não foi possível conectar ao servidor. Verifique sua conexão com a internet, 
+            certifique-se de que não há firewalls bloqueando o acesso, ou entre em contato 
+            com o suporte se o problema persistir.
           </p>
           <button
             onClick={() => window.location.reload()}
