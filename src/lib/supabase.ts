@@ -29,6 +29,46 @@ const validateConfig = () => {
 
 validateConfig();
 
+// Enhanced fetch function with better error handling
+const enhancedFetch = async (url: string, options: RequestInit = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout to 15 seconds
+  
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Connection timeout - please check your internet connection and try again');
+      }
+      
+      if (error.message === 'Failed to fetch') {
+        // Check if we're online
+        if (!navigator.onLine) {
+          throw new Error('No internet connection detected. Please check your network connection and try again.');
+        }
+        
+        // More specific error message for fetch failures
+        throw new Error('Unable to connect to the server. This could be due to:\n• Network connectivity issues\n• Firewall or antivirus blocking the connection\n• VPN/proxy interference\n• Server maintenance\n\nPlease check your connection and try again.');
+      }
+      
+      if (error.message.includes('NetworkError') || error.message.includes('net::')) {
+        throw new Error('Network error detected. Please check your internet connection and firewall settings.');
+      }
+    }
+    
+    throw error;
+  }
+};
+
 // Configuração do cliente Supabase com retry e timeout
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -44,21 +84,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'apikey': supabaseAnonKey,
       'X-Client-Info': 'supabase-js/2.39.7'
     },
-    fetch: (url, options = {}) => {
-      return fetch(url, {
-        ...options,
-        signal: AbortSignal.timeout(10000), // 10 second timeout
-      }).catch(error => {
-        console.error('Fetch error:', error);
-        if (error.name === 'AbortError') {
-          throw new Error('Connection timeout - please check your internet connection');
-        }
-        if (error.message === 'Failed to fetch') {
-          throw new Error('Network error - unable to connect to Supabase. Please check your internet connection and try again.');
-        }
-        throw error;
-      });
-    }
+    fetch: enhancedFetch
   },
   db: {
     schema: 'public'
@@ -70,13 +96,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-// Função para verificar a conexão com retry melhorado
+// Enhanced connection check with better error reporting
 export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
+  // First check if we're online
+  if (!navigator.onLine) {
+    console.warn('Device is offline');
+    return false;
+  }
+
   for (let i = 0; i < retries; i++) {
     try {
-      // Use a simple health check instead of querying a specific table
+      console.log(`Connection attempt ${i + 1} of ${retries}...`);
+      
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 second timeout
       
       const { data, error } = await supabase
         .from('profiles')
@@ -87,58 +120,74 @@ export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
       clearTimeout(timeoutId);
 
       if (error) {
-        console.warn(`Tentativa ${i + 1} de ${retries} falhou:`, error);
+        console.warn(`Connection attempt ${i + 1} failed:`, error);
         
         // Handle specific error cases
         switch (error.code) {
           case 'PGRST301':
+            console.error('Invalid Supabase credentials');
             if (i === retries - 1) {
-              toast.error('Credenciais do Supabase inválidas. Por favor, verifique suas credenciais.');
+              toast.error('Credenciais do Supabase inválidas. Por favor, verifique a configuração.');
             }
             return false;
           case '20014':
+            console.error('Database access error');
             if (i === retries - 1) {
               toast.error('Erro de acesso ao banco. Por favor, verifique as permissões.');
             }
             return false;
-          case '23505':
-            if (i === retries - 1) {
-              toast.error('Conflito de dados. Por favor, tente novamente.');
-            }
-            return false;
           case 'PGRST116':
-            if (i === retries - 1) {
-              toast.error('Erro de conexão com o banco de dados. Por favor, tente novamente.');
-            }
-            return false;
+            console.warn('Table not found - this might be expected for new users');
+            // This error is acceptable - table might not exist yet
+            return true;
           default:
             if (i === retries - 1) {
-              toast.error(`Não foi possível conectar ao Supabase: ${error.message}`);
+              const errorMsg = error.message || 'Unknown database error';
+              console.error('Database connection failed:', errorMsg);
+              toast.error(`Erro de conexão: ${errorMsg}`);
               return false;
             }
         }
         
-        // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+        // Wait before retry with exponential backoff
+        if (i < retries - 1) {
+          const waitTime = delay * Math.pow(1.5, i);
+          console.log(`Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
         continue;
       }
 
+      console.log('Connection successful');
       return true;
     } catch (error) {
-      console.warn(`Tentativa ${i + 1} de ${retries} falhou:`, error);
+      console.warn(`Connection attempt ${i + 1} failed:`, error);
       
       if (error instanceof Error) {
-        if (error.name === 'AbortError' || error.message.includes('timeout')) {
+        if (error.name === 'AbortError') {
+          console.error('Connection timeout');
           if (i === retries - 1) {
-            toast.error('Tempo limite de conexão excedido. Por favor, verifique sua conexão com a internet.');
+            toast.error('Tempo limite de conexão excedido. Verifique sua conexão com a internet.');
           }
-        } else if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
+        } else if (error.message.includes('No internet connection')) {
+          console.error('No internet connection');
           if (i === retries - 1) {
-            toast.error('Erro de conexão com a internet. Por favor, verifique sua conexão e tente novamente.');
+            toast.error('Sem conexão com a internet. Verifique sua rede e tente novamente.');
+          }
+        } else if (error.message.includes('Unable to connect to the server')) {
+          console.error('Server connection failed');
+          if (i === retries - 1) {
+            toast.error('Não foi possível conectar ao servidor. Verifique sua conexão, firewall ou VPN.');
+          }
+        } else if (error.message.includes('Network error')) {
+          console.error('Network error');
+          if (i === retries - 1) {
+            toast.error('Erro de rede. Verifique sua conexão e configurações de firewall.');
           }
         } else {
+          console.error('Unknown connection error:', error.message);
           if (i === retries - 1) {
-            toast.error('Erro de conexão com o Supabase. Por favor, verifique sua conexão.');
+            toast.error('Erro de conexão desconhecido. Tente novamente ou contate o suporte.');
           }
         }
       }
@@ -147,8 +196,10 @@ export const checkSupabaseConnection = async (retries = 3, delay = 2000) => {
         return false;
       }
       
-      // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      // Wait before retry with exponential backoff
+      const waitTime = delay * Math.pow(1.5, i);
+      console.log(`Waiting ${waitTime}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
     }
   }
   return false;
@@ -200,11 +251,19 @@ export const safeQuery = async <T>(
   return { data: null, error: new Error('Max retries reached') };
 };
 
-// Função para verificar o status da conexão com timeout
+// Enhanced connection status check
 export const getConnectionStatus = async () => {
+  // Check if device is online first
+  if (!navigator.onLine) {
+    return {
+      isConnected: false,
+      error: 'Dispositivo offline. Verifique sua conexão com a internet.'
+    };
+  }
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     
     const { data, error } = await supabase
       .from('profiles')
@@ -215,10 +274,18 @@ export const getConnectionStatus = async () => {
     clearTimeout(timeoutId);
     
     if (error) {
+      if (error.code === 'PGRST116') {
+        // Table not found is acceptable
+        return {
+          isConnected: true,
+          error: null
+        };
+      }
+      
       if (error.message?.includes('Failed to fetch') || error.message?.includes('Network error')) {
         return {
           isConnected: false,
-          error: 'Erro de conexão com a internet. Por favor, verifique sua conexão.'
+          error: 'Erro de conexão com a internet. Verifique sua conexão, firewall ou VPN.'
         };
       }
       
@@ -237,13 +304,19 @@ export const getConnectionStatus = async () => {
       if (error.name === 'AbortError') {
         return {
           isConnected: false,
-          error: 'Tempo limite de conexão excedido. Por favor, tente novamente.'
+          error: 'Tempo limite de conexão excedido. Verifique sua conexão.'
         };
       }
-      if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
+      if (error.message.includes('No internet connection')) {
         return {
           isConnected: false,
-          error: 'Erro de conexão com a internet. Por favor, verifique sua conexão.'
+          error: 'Sem conexão com a internet. Verifique sua rede.'
+        };
+      }
+      if (error.message.includes('Unable to connect to the server')) {
+        return {
+          isConnected: false,
+          error: 'Não foi possível conectar ao servidor. Verifique firewall, VPN ou proxy.'
         };
       }
       return {
