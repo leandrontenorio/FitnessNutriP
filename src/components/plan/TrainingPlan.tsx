@@ -108,7 +108,7 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
       .from('exercises')
       .select('*')
       .eq('nivel', dbLevel)
-      .ilike('objective', `%${objective}%`)
+      .ilike('objetivos', `%${objective}%`)
       .limit(50);
 
     // Filtra por tipo de equipamento, se a coluna existir
