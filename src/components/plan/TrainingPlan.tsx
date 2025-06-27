@@ -78,350 +78,206 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
     }
   };
 
-  // Normalize muscle group names for better matching
-  const normalizeMuscleGroup = (group: string): string => {
-    const normalized = group.toLowerCase().trim();
-    
-    // Map variations to standard names
-    const muscleGroupMap: { [key: string]: string } = {
-      'peito': 'peito',
-      'peitoral': 'peito',
-      'chest': 'peito',
-      'costas': 'costas',
-      'back': 'costas',
-      'dorsal': 'costas',
-      'pernas': 'pernas',
-      'legs': 'pernas',
-      'quadriceps': 'pernas',
-      'posterior': 'pernas',
-      'coxa': 'pernas',
-      'glúteos': 'glúteos',
-      'gluteo': 'glúteos',
-      'glutes': 'glúteos',
-      'bumbum': 'glúteos',
-      'ombros': 'ombros',
-      'ombro': 'ombros',
-      'shoulders': 'ombros',
-      'deltoides': 'ombros',
-      'deltoide': 'ombros',
-      'bíceps': 'bíceps',
-      'biceps': 'bíceps',
-      'bicep': 'bíceps',
-      'tríceps': 'tríceps',
-      'triceps': 'tríceps',
-      'tricep': 'tríceps',
-      'abdômen': 'abdômen',
-      'abdomen': 'abdômen',
-      'abs': 'abdômen',
-      'core': 'abdômen',
-      'abdominal': 'abdômen',
-      'braços': 'braços',
-      'bracos': 'braços',
-      'arms': 'braços',
-      'antebraço': 'braços',
-      'antebraco': 'braços'
-    };
-
-    return muscleGroupMap[normalized] || normalized;
-  };
-
-  // Define workout day configurations with specific muscle groups
-  const getWorkoutDayConfigs = (intensity: 'Iniciante' | 'Intermediário' | 'Avançado') => {
-    const configs = {
-      'Iniciante': [
-        {
-          title: 'Peito e Tríceps',
-          muscleGroups: ['peito', 'tríceps'],
-          exercisesPerGroup: { 'peito': 2, 'tríceps': 2 },
-          duration: 35
-        },
-        {
-          title: 'Costas e Bíceps',
-          muscleGroups: ['costas', 'bíceps'],
-          exercisesPerGroup: { 'costas': 2, 'bíceps': 2 },
-          duration: 35
-        },
-        {
-          title: 'Pernas e Glúteos',
-          muscleGroups: ['pernas', 'glúteos'],
-          exercisesPerGroup: { 'pernas': 3, 'glúteos': 1 },
-          duration: 40
-        }
-      ],
-      'Intermediário': [
-        {
-          title: 'Peito e Tríceps',
-          muscleGroups: ['peito', 'tríceps'],
-          exercisesPerGroup: { 'peito': 3, 'tríceps': 2 },
-          duration: 45
-        },
-        {
-          title: 'Costas e Bíceps',
-          muscleGroups: ['costas', 'bíceps'],
-          exercisesPerGroup: { 'costas': 3, 'bíceps': 2 },
-          duration: 45
-        },
-        {
-          title: 'Pernas e Glúteos',
-          muscleGroups: ['pernas', 'glúteos'],
-          exercisesPerGroup: { 'pernas': 3, 'glúteos': 2 },
-          duration: 50
-        },
-        {
-          title: 'Ombros e Abdômen',
-          muscleGroups: ['ombros', 'abdômen'],
-          exercisesPerGroup: { 'ombros': 3, 'abdômen': 2 },
-          duration: 40
-        }
-      ],
-      'Avançado': [
-        {
-          title: 'Peito e Tríceps',
-          muscleGroups: ['peito', 'tríceps'],
-          exercisesPerGroup: { 'peito': 4, 'tríceps': 2 },
-          duration: 60
-        },
-        {
-          title: 'Costas e Bíceps',
-          muscleGroups: ['costas', 'bíceps'],
-          exercisesPerGroup: { 'costas': 4, 'bíceps': 2 },
-          duration: 60
-        },
-        {
-          title: 'Pernas e Glúteos',
-          muscleGroups: ['pernas', 'glúteos'],
-          exercisesPerGroup: { 'pernas': 4, 'glúteos': 2 },
-          duration: 65
-        },
-        {
-          title: 'Ombros e Abdômen',
-          muscleGroups: ['ombros', 'abdômen'],
-          exercisesPerGroup: { 'ombros': 3, 'abdômen': 3 },
-          duration: 50
-        },
-        {
-          title: 'Braços Completo',
-          muscleGroups: ['bíceps', 'tríceps'],
-          exercisesPerGroup: { 'bíceps': 3, 'tríceps': 3 },
-          duration: 45
-        }
-      ]
-    };
-
-    return configs[intensity];
-  };
-
   // Fetch exercises from Supabase and generate workout
   const fetchAndGenerateWorkout = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  try {
+    setLoading(true);
+    setError(null);
 
-      const objective = mapGoalToObjective(userRegistration.goal);
-      const intensity = getIntensityLevel(userRegistration.activity_level || '');
-      const isGym = userRegistration.training_preference?.includes('academia') || false;
+    const objective = mapGoalToObjective(userRegistration.goal);
+    const intensity = getIntensityLevel(userRegistration.activity_level || '');
+    const isGym = userRegistration.training_preference?.includes('academia') || false;
 
-      // Map intensity to database level
-      const levelMap = {
-        'Iniciante': 'iniciante',
-        'Intermediário': 'intermediario',
-        'Avançado': 'avancado'
-      };
-      const dbLevel = levelMap[intensity];
+    // Map intensity to database level
+    const levelMap = {
+      'Iniciante': 'iniciante',
+      'Intermediário': 'intermediario',
+      'Avançado': 'avancado'
+    };
+    const dbLevel = levelMap[intensity];
 
-      console.log('🏋️ Buscando exercícios:', { 
-        objetivo: objective, 
-        nivel: dbLevel, 
-        academia: isGym,
-        preferencia: userRegistration.training_preference 
-      });
+    console.log('🏋️ Buscando exercícios:', { 
+      objetivo: objective, 
+      nivel: dbLevel, 
+      academia: isGym,
+      preferencia: userRegistration.training_preference 
+    });
 
-      // Fetch all exercises that match the criteria
-      let query = supabase
+    // Monta a query principal
+    let query = supabase
+      .from('exercises')
+      .select('*')
+      .eq('nivel', dbLevel)
+      .ilike('objetivos', `%${objective}%`)
+      .limit(50);
+
+    // Filtra por tipo de equipamento, se a coluna existir
+    if (isGym) {
+      query = query.neq('equipamento', 'Peso Corporal');
+    } else {
+      query = query.in('equipamento', ['Peso Corporal', 'Halteres']);
+    }
+
+    const { data: exercises, error: fetchError } = await query;
+
+    if (fetchError) {
+      console.error('❌ Erro na consulta Supabase:', fetchError);
+      throw new Error(`Erro ao buscar exercícios: ${fetchError.message}`);
+    }
+
+    if (!exercises || exercises.length < 10) {
+      console.warn('⚠️ Poucos exercícios encontrados, tentando consulta alternativa...');
+
+      let fallbackQuery = supabase
         .from('exercises')
         .select('*')
         .eq('nivel', dbLevel)
-        .ilike('objetivos', `%${objective}%`)
-        .limit(100); // Increased limit to get more variety
+        .limit(50);
 
-      // Filter by equipment type
       if (isGym) {
-        query = query.neq('equipamento', 'Peso Corporal');
+        fallbackQuery = fallbackQuery.neq('equipamento', 'Peso Corporal');
       } else {
-        query = query.in('equipamento', ['Peso Corporal', 'Halteres']);
+        fallbackQuery = fallbackQuery.in('equipamento', ['Peso Corporal', 'Halteres']);
       }
 
-      const { data: exercises, error: fetchError } = await query;
+      const { data: fallbackExercises, error: fallbackError } = await fallbackQuery;
 
-      if (fetchError) {
-        console.error('❌ Erro na consulta Supabase:', fetchError);
-        throw new Error(`Erro ao buscar exercícios: ${fetchError.message}`);
+      if (fallbackError) {
+        throw new Error(`Erro ao buscar exercícios alternativos: ${fallbackError.message}`);
       }
 
-      if (!exercises || exercises.length < 10) {
-        console.warn('⚠️ Poucos exercícios encontrados, tentando consulta alternativa...');
-
-        let fallbackQuery = supabase
-          .from('exercises')
-          .select('*')
-          .eq('nivel', dbLevel)
-          .limit(100);
-
-        if (isGym) {
-          fallbackQuery = fallbackQuery.neq('equipamento', 'Peso Corporal');
-        } else {
-          fallbackQuery = fallbackQuery.in('equipamento', ['Peso Corporal', 'Halteres']);
-        }
-
-        const { data: fallbackExercises, error: fallbackError } = await fallbackQuery;
-
-        if (fallbackError) {
-          throw new Error(`Erro ao buscar exercícios alternativos: ${fallbackError.message}`);
-        }
-
-        if (!fallbackExercises || fallbackExercises.length === 0) {
-          console.log('⚠️ Nenhum exercício encontrado, usando plano estático');
-          return generateFallbackPlan();
-        }
-
-        return generateWorkoutPlan(fallbackExercises, intensity);
+      if (!fallbackExercises || fallbackExercises.length === 0) {
+        console.log('⚠️ Nenhum exercício encontrado, usando plano estático');
+        return generateFallbackPlan();
       }
 
-      return generateWorkoutPlan(exercises, intensity);
-
-    } catch (error) {
-      console.error('❌ Erro em fetchAndGenerateWorkout:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao carregar exercícios do banco de dados');
-      throw error;
-    } finally {
-      setLoading(false);
+      return generateWorkoutPlan(fallbackExercises, intensity);
     }
-  };
 
-  // Generate workout plan from exercises with strict muscle group filtering
+    return generateWorkoutPlan(exercises, intensity);
+
+  } catch (error) {
+    console.error('❌ Erro em fetchAndGenerateWorkout:', error);
+    setError(error instanceof Error ? error.message : 'Erro ao carregar exercícios do banco de dados');
+    throw error;
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Generate workout plan from exercises
   const generateWorkoutPlan = (exercises: any[], intensity: 'Iniciante' | 'Intermediário' | 'Avançado'): WorkoutDay[] => {
-    console.log(`🎯 Gerando plano de treino com ${exercises.length} exercícios`);
+  console.log(`🎯 Gerando plano de treino com ${exercises.length} exercícios`);
 
-    const workoutConfigs = getWorkoutDayConfigs(intensity);
-    const workoutDays: WorkoutDay[] = [];
+  const shuffledExercises = shuffleArray(exercises);
 
-    // Organize exercises by normalized muscle group
-    const exercisesByMuscleGroup: { [key: string]: any[] } = {};
-    
-    exercises.forEach(exercise => {
-      const normalizedGroup = normalizeMuscleGroup(exercise.grupo_muscular || '');
-      if (!exercisesByMuscleGroup[normalizedGroup]) {
-        exercisesByMuscleGroup[normalizedGroup] = [];
-      }
-      exercisesByMuscleGroup[normalizedGroup].push(exercise);
-    });
-
-    console.log('📊 Exercícios por grupo muscular:', Object.keys(exercisesByMuscleGroup).map(group => 
-      `${group}: ${exercisesByMuscleGroup[group].length}`
-    ));
-
-    workoutConfigs.forEach((config, dayIndex) => {
-      const dayExercises: any[] = [];
-      
-      // For each muscle group in this day's configuration
-      config.muscleGroups.forEach(targetMuscleGroup => {
-        const requiredCount = config.exercisesPerGroup[targetMuscleGroup] || 1;
-        const availableExercises = exercisesByMuscleGroup[targetMuscleGroup] || [];
-        
-        if (availableExercises.length > 0) {
-          // Shuffle and take required number of exercises
-          const shuffledExercises = shuffleArray(availableExercises);
-          const selectedExercises = shuffledExercises.slice(0, requiredCount);
-          dayExercises.push(...selectedExercises);
-          
-          console.log(`✅ Dia ${dayIndex + 1} - ${targetMuscleGroup}: ${selectedExercises.length}/${requiredCount} exercícios`);
-        } else {
-          console.warn(`⚠️ Nenhum exercício encontrado para ${targetMuscleGroup}`);
-        }
-      });
-
-      // If we don't have enough exercises, try to find similar muscle groups
-      const totalRequired = Object.values(config.exercisesPerGroup).reduce((sum, count) => sum + count, 0);
-      if (dayExercises.length < totalRequired) {
-        console.warn(`⚠️ Dia ${dayIndex + 1}: Apenas ${dayExercises.length}/${totalRequired} exercícios encontrados`);
-        
-        // Try to fill with exercises from related muscle groups
-        const relatedGroups = getRelatedMuscleGroups(config.muscleGroups);
-        for (const relatedGroup of relatedGroups) {
-          if (dayExercises.length >= totalRequired) break;
-          
-          const relatedExercises = exercisesByMuscleGroup[relatedGroup] || [];
-          if (relatedExercises.length > 0) {
-            const needed = totalRequired - dayExercises.length;
-            const shuffled = shuffleArray(relatedExercises);
-            const additional = shuffled.slice(0, needed);
-            dayExercises.push(...additional);
-            console.log(`🔄 Adicionados ${additional.length} exercícios de ${relatedGroup}`);
-          }
-        }
-      }
-
-      // Format exercises for the workout day
-      const formattedExercises: Exercise[] = dayExercises.map(ex => ({
-        name: ex.nome || 'Exercício',
-        sets: ex.series?.toString() || '3',
-        reps: ex.repeticoes || '10-12',
-        rest: ex.descanso || '60s',
-        notes: ex.observacoes ? [ex.observacoes] : ['Execute com boa forma'],
-        muscleGroup: ex.grupo_muscular || '',
-        equipment: ex.equipamento || ''
-      }));
-
-      workoutDays.push({
-        id: `day-${dayIndex + 1}`,
-        title: `Dia ${dayIndex + 1}: ${config.title}`,
-        intensity,
-        duration: `${config.duration} minutos`,
-        warmup: [
-          'Mobilidade articular - 5 minutos',
-          'Alongamento dinâmico - 5 minutos',
-          'Aquecimento específico - 5 minutos'
-        ],
-        exercises: formattedExercises,
-        cooldown: [
-          'Alongamento estático - 5 minutos',
-          'Respiração e relaxamento - 3 minutos'
-        ],
-        tips: [
-          'Mantenha-se hidratado durante o treino',
-          'Foque na execução correta dos movimentos',
-          'Ajuste as cargas conforme necessário',
-          'Respeite os tempos de descanso'
-        ]
-      });
-    });
-
-    console.log(`✅ Plano gerado com ${workoutDays.length} dias e grupos musculares específicos`);
-    return workoutDays;
+  const workoutParams = {
+    'Iniciante': { days: 3, exercisesPerDay: 4, duration: 35 },
+    'Intermediário': { days: 4, exercisesPerDay: 5, duration: 45 },
+    'Avançado': { days: 5, exercisesPerDay: 6, duration: 60 }
   };
 
-  // Get related muscle groups for fallback
-  const getRelatedMuscleGroups = (primaryGroups: string[]): string[] => {
-    const relations: { [key: string]: string[] } = {
-      'peito': ['ombros', 'tríceps'],
-      'costas': ['bíceps', 'ombros'],
-      'pernas': ['glúteos'],
-      'glúteos': ['pernas'],
-      'ombros': ['peito', 'tríceps'],
-      'bíceps': ['costas'],
-      'tríceps': ['peito', 'ombros'],
-      'abdômen': ['ombros']
-    };
+  const params = workoutParams[intensity];
+  const workoutDays: WorkoutDay[] = [];
 
-    const related: string[] = [];
-    primaryGroups.forEach(group => {
-      const relatedGroups = relations[group] || [];
-      related.push(...relatedGroups);
-    });
+  const dayFocuses = [
+    'Peito e Tríceps',
+    'Costas e Bíceps', 
+    'Pernas e Glúteos',
+    'Ombros e Abdômen',
+    'Full Body'
+  ];
 
-    // Remove duplicates and primary groups
-    return [...new Set(related)].filter(group => !primaryGroups.includes(group));
+  // Organiza exercícios por grupo muscular (mutável)
+  const availableExercisesByGroup: { [key: string]: any[] } = {};
+  shuffledExercises.forEach(ex => {
+    const group = ex.grupo_muscular || 'Geral';
+    if (!availableExercisesByGroup[group]) {
+      availableExercisesByGroup[group] = [];
+    }
+    availableExercisesByGroup[group].push(ex);
+  });
+
+  const takeExercises = (group: string, count: number): any[] => {
+    const list = availableExercisesByGroup[group] || [];
+    return list.splice(0, count); // remove usados
   };
+
+  for (let i = 0; i < params.days; i++) {
+    let dayExercises: any[] = [];
+    const dayFocus = dayFocuses[i] || 'Treino Geral';
+
+    if (dayFocus.includes('Peito')) {
+      dayExercises = [
+        ...takeExercises('Peito', 2),
+        ...takeExercises('Tríceps', 2)
+      ];
+    } else if (dayFocus.includes('Costas')) {
+      dayExercises = [
+        ...takeExercises('Costas', 2),
+        ...takeExercises('Bíceps', 2)
+      ];
+    } else if (dayFocus.includes('Pernas')) {
+      dayExercises = [
+        ...takeExercises('Pernas', 3),
+        ...takeExercises('Glúteos', 1)
+      ];
+    } else if (dayFocus.includes('Ombros')) {
+      dayExercises = [
+        ...takeExercises('Ombros', 2),
+        ...takeExercises('Abdômen', 2)
+      ];
+    } else {
+      const allGroups = Object.keys(availableExercisesByGroup);
+      for (const group of allGroups) {
+        if (dayExercises.length < params.exercisesPerDay) {
+          dayExercises.push(...takeExercises(group, 1));
+        }
+      }
+    }
+
+    // Fallback: completa com qualquer exercício restante
+    const usedIds = new Set(dayExercises.map(ex => ex.id));
+    const remaining = shuffledExercises.filter(ex => !usedIds.has(ex.id));
+    dayExercises.push(...remaining.slice(0, params.exercisesPerDay - dayExercises.length));
+
+    const formattedExercises: Exercise[] = dayExercises.slice(0, params.exercisesPerDay).map(ex => ({
+      name: ex.nome || 'Exercício',
+      sets: ex.series?.toString() || '3',
+      reps: ex.repeticoes || '10-12',
+      rest: ex.descanso || '60s',
+      notes: ex.observacoes ? [ex.observacoes] : ['Execute com boa forma'],
+      muscleGroup: ex.grupo_muscular || '',
+      equipment: ex.equipamento || ''
+    }));
+
+    workoutDays.push({
+      id: `day-${i + 1}`,
+      title: `Dia ${i + 1}: ${dayFocus}`,
+      intensity,
+      duration: `${params.duration} minutos`,
+      warmup: [
+        'Mobilidade articular - 5 minutos',
+        'Alongamento dinâmico - 5 minutos',
+        'Aquecimento específico - 5 minutos'
+      ],
+      exercises: formattedExercises,
+      cooldown: [
+        'Alongamento estático - 5 minutos',
+        'Respiração e relaxamento - 3 minutos'
+      ],
+      tips: [
+        'Mantenha-se hidratado durante o treino',
+        'Foque na execução correta dos movimentos',
+        'Ajuste as cargas conforme necessário',
+        'Respeite os tempos de descanso'
+      ]
+    });
+  }
+
+  console.log(`✅ Plano gerado com ${workoutDays.length} dias e variação de grupos musculares`);
+  return workoutDays;
+};
 
   useEffect(() => {
     const generatePlan = async () => {
