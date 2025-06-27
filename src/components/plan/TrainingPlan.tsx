@@ -103,12 +103,12 @@ function TrainingPlan({ userRegistration, isPrintMode = false }: TrainingPlanPro
       preferencia: userRegistration.training_preference 
     });
 
-    // Monta a query principal
+    // Monta a query principal - Fixed: changed 'objective' to 'objetivos'
     let query = supabase
       .from('exercises')
       .select('*')
       .eq('nivel', dbLevel)
-      .ilike('objective', `%${objective}%`)
+      .ilike('objetivos', `%${objective}%`)
       .limit(50);
 
     // Filtra por tipo de equipamento, se a coluna existir
