@@ -60,6 +60,7 @@ function PaymentStatus() {
           throw new Error('Missing payment information');
         }
 
+        // Process payment first
         await processPayment(externalReference, paymentId, status);
 
         if (status === 'approved') {
@@ -70,31 +71,33 @@ function PaymentStatus() {
             const hasPlan = await checkPlanStatus();
 
             if (hasPlan) {
+              pollingActiveRef.current = false;
               toast.success('Plano gerado com sucesso! Redirecionando...');
               setLoading(false);
               navigate('/plan', { replace: true });
-              pollingActiveRef.current = false;
-            } else {
-              setRetryCount(prev => {
-                if (prev + 1 >= maxRetries) {
-                  toast.error('Tempo esgotado para geração do plano. Por favor, contate o suporte.');
-                  setError('Tempo esgotado para geração do plano.');
-                  setLoading(false);
-                  pollingActiveRef.current = false;
-                  return prev; // não incrementa mais
-                }
-                return prev + 1;
-              });
+              return;
+            }
 
-              if (pollingActiveRef.current) {
-                pollTimeout = setTimeout(poll, retryDelay);
+            setRetryCount(prev => {
+              const nextCount = prev + 1;
+              if (nextCount >= maxRetries) {
+                pollingActiveRef.current = false;
+                toast.error('Tempo esgotado para geração do plano. Por favor, contate o suporte.');
+                setError('Tempo esgotado para geração do plano.');
+                setLoading(false);
+                return prev;
               }
+              return nextCount;
+            });
+
+            if (pollingActiveRef.current) {
+              pollTimeout = setTimeout(poll, retryDelay);
             }
           };
 
-          poll(); // chama primeira vez
+          // Start polling
+          poll();
         } else {
-          // Status não aprovado ou pendente - para de carregar
           setLoading(false);
         }
       } catch (err) {
