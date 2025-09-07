@@ -87,7 +87,11 @@ function SignUp({ onBackToLogin }: SignUpProps) {
       onBackToLogin();
     } catch (error: any) {
       console.error('Signup error:', error);
-      toast.error('Erro ao criar conta. Por favor, tente novamente.');
+      if (error.message === 'User already registered') {
+        toast.error('Este email já está cadastrado. Por favor, faça login ou use outro email.');
+      } else {
+        toast.error('Erro ao criar conta. Por favor, tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
